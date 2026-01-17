@@ -1,9 +1,11 @@
 import { useState, useRef, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { toast } from 'sonner';
 import { 
   Send, 
   Sparkles,
@@ -31,6 +33,8 @@ const quickCommands = [
   { icon: HelpCircle, label: 'وش الأهم؟', command: 'وش الأهم الآن؟' },
 ];
 
+const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-chat`;
+
 export default function Assistant() {
   const { profile } = useAuth();
   const [messages, setMessages] = useState<Message[]>([
@@ -51,36 +55,148 @@ export default function Assistant() {
     }
   }, [messages]);
 
-  const sendMessage = async (content: string) => {
-    if (!content.trim() || isLoading) return;
-
-    const userMessage: Message = {
+  const streamChat = async (userMessage: string) => {
+    // إضافة رسالة المستخدم
+    const userMsg: Message = {
       id: Date.now().toString(),
       role: 'user',
-      content: content.trim(),
+      content: userMessage,
       timestamp: new Date(),
     };
-
-    setMessages(prev => [...prev, userMessage]);
+    
+    setMessages(prev => [...prev, userMsg]);
     setInput('');
     setIsLoading(true);
 
-    // محاكاة رد المساعد (سيتم استبداله بـ AI Gateway)
-    setTimeout(() => {
-      const assistantMessage: Message = {
+    // تحضير المحادثة للإرسال
+    const chatHistory = messages.map(m => ({
+      role: m.role,
+      content: m.content,
+    }));
+    chatHistory.push({ role: 'user', content: userMessage });
+
+    try {
+      const response = await fetch(CHAT_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+        },
+        body: JSON.stringify({ messages: chatHistory }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'فشل الاتصال بالمساعد الذكي');
+      }
+
+      if (!response.body) {
+        throw new Error('لم يتم استلام رد');
+      }
+
+      // معالجة Stream
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let assistantContent = '';
+      let textBuffer = '';
+
+      // إضافة رسالة المساعد الفارغة
+      const assistantMsgId = (Date.now() + 1).toString();
+      setMessages(prev => [...prev, {
+        id: assistantMsgId,
+        role: 'assistant',
+        content: '',
+        timestamp: new Date(),
+      }]);
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        textBuffer += decoder.decode(value, { stream: true });
+
+        // معالجة كل سطر
+        let newlineIndex: number;
+        while ((newlineIndex = textBuffer.indexOf('\n')) !== -1) {
+          let line = textBuffer.slice(0, newlineIndex);
+          textBuffer = textBuffer.slice(newlineIndex + 1);
+
+          if (line.endsWith('\r')) line = line.slice(0, -1);
+          if (line.startsWith(':') || line.trim() === '') continue;
+          if (!line.startsWith('data: ')) continue;
+
+          const jsonStr = line.slice(6).trim();
+          if (jsonStr === '[DONE]') break;
+
+          try {
+            const parsed = JSON.parse(jsonStr);
+            const content = parsed.choices?.[0]?.delta?.content as string | undefined;
+            if (content) {
+              assistantContent += content;
+              // تحديث رسالة المساعد
+              setMessages(prev => prev.map(m => 
+                m.id === assistantMsgId 
+                  ? { ...m, content: assistantContent }
+                  : m
+              ));
+            }
+          } catch {
+            // JSON غير مكتمل، نعيده للـ buffer
+            textBuffer = line + '\n' + textBuffer;
+            break;
+          }
+        }
+      }
+
+      // معالجة ما تبقى في الـ buffer
+      if (textBuffer.trim()) {
+        for (let raw of textBuffer.split('\n')) {
+          if (!raw) continue;
+          if (raw.endsWith('\r')) raw = raw.slice(0, -1);
+          if (raw.startsWith(':') || raw.trim() === '') continue;
+          if (!raw.startsWith('data: ')) continue;
+          const jsonStr = raw.slice(6).trim();
+          if (jsonStr === '[DONE]') continue;
+          try {
+            const parsed = JSON.parse(jsonStr);
+            const content = parsed.choices?.[0]?.delta?.content as string | undefined;
+            if (content) {
+              assistantContent += content;
+              setMessages(prev => prev.map(m => 
+                m.id === assistantMsgId 
+                  ? { ...m, content: assistantContent }
+                  : m
+              ));
+            }
+          } catch { /* تجاهل */ }
+        }
+      }
+
+    } catch (error) {
+      console.error('Chat error:', error);
+      toast.error(error instanceof Error ? error.message : 'حدث خطأ في المحادثة');
+      
+      // إضافة رسالة خطأ
+      setMessages(prev => [...prev, {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: getSimulatedResponse(content),
+        content: 'عذراً، حدث خطأ في الاتصال. حاول مرة أخرى. 🔄',
         timestamp: new Date(),
-      };
-      setMessages(prev => [...prev, assistantMessage]);
+      }]);
+    } finally {
       setIsLoading(false);
-    }, 1500);
+    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    sendMessage(input);
+    if (!input.trim() || isLoading) return;
+    streamChat(input.trim());
+  };
+
+  const handleQuickCommand = (command: string) => {
+    if (isLoading) return;
+    streamChat(command);
   };
 
   return (
@@ -93,7 +209,9 @@ export default function Assistant() {
           </div>
           <div>
             <h1 className="font-bold text-lg">المساعد الذكي</h1>
-            <p className="text-xs text-muted-foreground">متصل ونشط</p>
+            <p className="text-xs text-muted-foreground">
+              {isLoading ? 'يفكر...' : 'متصل ونشط'}
+            </p>
           </div>
         </div>
       </header>
@@ -105,7 +223,7 @@ export default function Assistant() {
             <MessageBubble key={message.id} message={message} />
           ))}
           
-          {isLoading && (
+          {isLoading && messages[messages.length - 1]?.role !== 'assistant' && (
             <div className="flex items-center gap-3">
               <div className="p-2 rounded-full bg-primary/20">
                 <Bot className="w-5 h-5 text-primary" />
@@ -127,7 +245,7 @@ export default function Assistant() {
               key={cmd.command}
               variant="outline"
               size="sm"
-              onClick={() => sendMessage(cmd.command)}
+              onClick={() => handleQuickCommand(cmd.command)}
               className="shrink-0 bg-card border-border hover:bg-primary/10 hover:border-primary/50"
               disabled={isLoading}
             >
@@ -154,7 +272,11 @@ export default function Assistant() {
             className="btn-gradient shrink-0"
             disabled={!input.trim() || isLoading}
           >
-            <Send className="w-5 h-5" />
+            {isLoading ? (
+              <Loader2 className="w-5 h-5 animate-spin" />
+            ) : (
+              <Send className="w-5 h-5" />
+            )}
           </Button>
         </form>
       </div>
@@ -167,7 +289,7 @@ function MessageBubble({ message }: { message: Message }) {
 
   return (
     <div className={cn(
-      "flex items-start gap-3",
+      "flex items-start gap-3 animate-fade-in",
       isUser && "flex-row-reverse"
     )}>
       <div className={cn(
@@ -189,32 +311,10 @@ function MessageBubble({ message }: { message: Message }) {
       )}>
         <CardContent className="p-3">
           <p className="text-sm whitespace-pre-wrap leading-relaxed">
-            {message.content}
+            {message.content || '...'}
           </p>
         </CardContent>
       </Card>
     </div>
   );
-}
-
-function getSimulatedResponse(input: string): string {
-  const lowerInput = input.toLowerCase();
-
-  if (lowerInput.includes('رتب') || lowerInput.includes('يوم')) {
-    return `بناءً على مهامك الحالية، هذا ترتيب مقترح ليومك:\n\n🌅 الصباح (8-12):\n• المهام العاجلة والمهمة\n• العمل الذي يحتاج تركيز عالي\n\n☀️ الظهيرة (12-17):\n• الاجتماعات والتواصل\n• المهام المتوسطة\n\n🌙 المساء (17-21):\n• المهام الشخصية والتعلم\n• المراجعة والتخطيط للغد\n\nهل تريد تفاصيل أكثر؟`;
-  }
-
-  if (lowerInput.includes('قسم') || lowerInput.includes('مهمة')) {
-    return `لتقسيم المهمة بشكل فعال:\n\n1️⃣ حدد الهدف النهائي بوضوح\n2️⃣ قسّمها لخطوات صغيرة (15-30 دقيقة لكل خطوة)\n3️⃣ رتب الخطوات حسب الأولوية\n4️⃣ حدد موعد لكل خطوة\n\nأعطني اسم المهمة وسأساعدك في تقسيمها! 📝`;
-  }
-
-  if (lowerInput.includes('خطة') || lowerInput.includes('أسبوع')) {
-    return `لإنشاء خطة أسبوعية فعالة:\n\n📋 أولاً: حدد 3 أهداف رئيسية للأسبوع\n📅 ثانياً: وزّع المهام على الأيام\n⚡ ثالثاً: خصص وقت للطوارئ\n🔄 رابعاً: راجع الخطة يومياً\n\nما هي أهدافك الثلاثة الرئيسية لهذا الأسبوع؟`;
-  }
-
-  if (lowerInput.includes('أهم') || lowerInput.includes('الآن')) {
-    return `للتركيز على الأهم الآن:\n\n❓ اسأل نفسك:\n• ما المهمة التي ستحدث أكبر فرق؟\n• ما الموعد النهائي الأقرب؟\n• ما المهمة التي تؤثر على الآخرين؟\n\n💡 نصيحة: ابدأ بمهمة واحدة فقط وأنهها قبل الانتقال للتالية.\n\nهل تريد مساعدة في تحديد أولوياتك؟`;
-  }
-
-  return `شكراً لرسالتك! 😊\n\nأنا هنا لمساعدتك في:\n• ترتيب يومك\n• تقسيم المهام\n• إنشاء خطط\n• الإجابة على استفساراتك\n\nجرّب الأوامر السريعة أدناه أو اكتب ما تحتاجه!`;
 }
