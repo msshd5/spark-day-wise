@@ -154,9 +154,13 @@ export type Database = {
           email: string | null
           id: string
           name: string | null
+          part_time_days: string[] | null
+          part_time_end_time: string | null
+          part_time_start_time: string | null
           timezone: string | null
           updated_at: string
           user_id: string
+          work_days: string[]
           work_end_time: string | null
           work_start_time: string | null
         }
@@ -165,9 +169,13 @@ export type Database = {
           email?: string | null
           id?: string
           name?: string | null
+          part_time_days?: string[] | null
+          part_time_end_time?: string | null
+          part_time_start_time?: string | null
           timezone?: string | null
           updated_at?: string
           user_id: string
+          work_days?: string[]
           work_end_time?: string | null
           work_start_time?: string | null
         }
@@ -176,9 +184,13 @@ export type Database = {
           email?: string | null
           id?: string
           name?: string | null
+          part_time_days?: string[] | null
+          part_time_end_time?: string | null
+          part_time_start_time?: string | null
           timezone?: string | null
           updated_at?: string
           user_id?: string
+          work_days?: string[]
           work_end_time?: string | null
           work_start_time?: string | null
         }
