@@ -4,6 +4,7 @@ import {
   CheckSquare, 
   FolderKanban, 
   Calendar,
+  Sparkles,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -12,6 +13,7 @@ const navItems = [
   { to: '/tasks', icon: CheckSquare, label: 'المهام' },
   { to: '/planner', icon: Calendar, label: 'التقويم' },
   { to: '/projects', icon: FolderKanban, label: 'المشاريع' },
+  { to: '/assistant', icon: Sparkles, label: 'المساعد' },
 ];
 
 export function MobileNavigation() {
