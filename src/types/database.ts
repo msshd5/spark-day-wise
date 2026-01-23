@@ -6,6 +6,7 @@ export type TaskCategory = 'work' | 'learning' | 'health' | 'personal' | 'other'
 export type ProjectStatus = 'active' | 'completed' | 'paused' | 'archived';
 export type EnergyLevel = 'low' | 'medium' | 'high';
 export type MoodType = 'great' | 'good' | 'okay' | 'bad';
+export type CommitmentType = 'work' | 'part_time' | 'study' | 'other';
 
 export interface Profile {
   id: string;
@@ -14,6 +15,10 @@ export interface Profile {
   email: string | null;
   work_start_time: string;
   work_end_time: string;
+  work_days: string[];
+  part_time_days: string[] | null;
+  part_time_start_time: string | null;
+  part_time_end_time: string | null;
   timezone: string;
   created_at: string;
   updated_at: string;
@@ -50,9 +55,22 @@ export interface Task {
   order_index: number;
   created_at: string;
   updated_at: string;
-  // علاقات
   project?: Project;
   subtasks?: Task[];
+}
+
+export interface Commitment {
+  id: string;
+  user_id: string;
+  title: string;
+  type: CommitmentType;
+  days: string[];
+  start_time: string;
+  end_time: string;
+  color: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface DailyPlan {
@@ -115,7 +133,6 @@ export interface AIMessage {
   created_at: string;
 }
 
-// ترجمات الأنواع للعربية
 export const taskStatusLabels: Record<TaskStatus, string> = {
   pending: 'جديد',
   in_progress: 'قيد التنفيذ',
@@ -156,4 +173,21 @@ export const moodLabels: Record<MoodType, string> = {
   good: 'جيد',
   okay: 'مقبول',
   bad: 'سيء',
+};
+
+export const commitmentTypeLabels: Record<CommitmentType, string> = {
+  work: 'دوام',
+  part_time: 'عمل جزئي',
+  study: 'دراسة',
+  other: 'أخرى',
+};
+
+export const dayLabels: Record<string, string> = {
+  sun: 'الأحد',
+  mon: 'الإثنين',
+  tue: 'الثلاثاء',
+  wed: 'الأربعاء',
+  thu: 'الخميس',
+  fri: 'الجمعة',
+  sat: 'السبت',
 };

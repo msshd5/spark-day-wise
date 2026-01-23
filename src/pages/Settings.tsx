@@ -6,24 +6,32 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
+import { Checkbox } from '@/components/ui/checkbox';
+import { CommitmentsList } from '@/components/commitments/CommitmentsList';
+import { dayLabels } from '@/types/database';
 import { toast } from 'sonner';
 import { 
   User, 
   Clock, 
-  Bell, 
   LogOut,
   ChevronLeft,
   Loader2,
   Save,
+  CalendarDays,
 } from 'lucide-react';
+
+const DAYS = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
 
 export default function Settings() {
   const navigate = useNavigate();
   const { profile, updateProfile, signOut } = useAuth();
   const [loading, setLoading] = useState(false);
   const [name, setName] = useState(profile?.name || '');
-  const [workStartTime, setWorkStartTime] = useState(profile?.work_start_time || '09:00');
-  const [workEndTime, setWorkEndTime] = useState(profile?.work_end_time || '17:00');
+  const [workStartTime, setWorkStartTime] = useState(profile?.work_start_time || '08:00');
+  const [workEndTime, setWorkEndTime] = useState(profile?.work_end_time || '15:00');
+  const [workDays, setWorkDays] = useState<string[]>(
+    profile?.work_days || ['sun', 'mon', 'tue', 'wed', 'thu']
+  );
 
   const handleSave = async () => {
     setLoading(true);
@@ -31,6 +39,7 @@ export default function Settings() {
       name: name.trim() || null,
       work_start_time: workStartTime,
       work_end_time: workEndTime,
+      work_days: workDays,
     });
     setLoading(false);
 
@@ -46,6 +55,14 @@ export default function Settings() {
     await signOut();
     navigate('/auth');
     toast.success('تم تسجيل الخروج');
+  };
+
+  const toggleDay = (day: string) => {
+    setWorkDays(prev => 
+      prev.includes(day) 
+        ? prev.filter(d => d !== day)
+        : [...prev, day]
+    );
   };
 
   return (
@@ -95,13 +112,13 @@ export default function Settings() {
           <CardHeader className="pb-2">
             <CardTitle className="flex items-center gap-2 text-lg">
               <Clock className="w-5 h-5 text-accent" />
-              أوقات العمل
+              أوقات الدوام
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="startTime">بداية العمل</Label>
+                <Label htmlFor="startTime">بداية الدوام</Label>
                 <Input
                   id="startTime"
                   type="time"
@@ -111,7 +128,7 @@ export default function Settings() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="endTime">نهاية العمل</Label>
+                <Label htmlFor="endTime">نهاية الدوام</Label>
                 <Input
                   id="endTime"
                   type="time"
@@ -120,6 +137,37 @@ export default function Settings() {
                   className="bg-input border-border"
                 />
               </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* أيام الدوام */}
+        <Card className="glass-card">
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <CalendarDays className="w-5 h-5 text-primary" />
+              أيام الدوام
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-wrap gap-2">
+              {DAYS.map(day => (
+                <label
+                  key={day}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-xl cursor-pointer transition-all ${
+                    workDays.includes(day) 
+                      ? 'bg-primary text-primary-foreground' 
+                      : 'bg-muted hover:bg-muted/80'
+                  }`}
+                >
+                  <Checkbox
+                    checked={workDays.includes(day)}
+                    onCheckedChange={() => toggleDay(day)}
+                    className="sr-only"
+                  />
+                  <span className="text-sm font-medium">{dayLabels[day]}</span>
+                </label>
+              ))}
             </div>
           </CardContent>
         </Card>
@@ -135,6 +183,11 @@ export default function Settings() {
             </>
           )}
         </Button>
+
+        <Separator className="my-6" />
+
+        {/* الالتزامات */}
+        <CommitmentsList />
 
         <Separator className="my-6" />
 

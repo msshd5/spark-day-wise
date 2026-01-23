@@ -73,6 +73,48 @@ export type Database = {
           },
         ]
       }
+      commitments: {
+        Row: {
+          color: string | null
+          created_at: string
+          days: string[]
+          end_time: string
+          id: string
+          is_active: boolean
+          start_time: string
+          title: string
+          type: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          days?: string[]
+          end_time: string
+          id?: string
+          is_active?: boolean
+          start_time: string
+          title: string
+          type: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          days?: string[]
+          end_time?: string
+          id?: string
+          is_active?: boolean
+          start_time?: string
+          title?: string
+          type?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       daily_plans: {
         Row: {
           available_minutes: number | null
