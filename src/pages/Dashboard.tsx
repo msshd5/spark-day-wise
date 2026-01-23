@@ -3,10 +3,12 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Task, taskPriorityLabels, taskCategoryLabels } from '@/types/database';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
+import { WaterTracker } from '@/components/dashboard/WaterTracker';
+import { SocialMediaLinks } from '@/components/dashboard/SocialMediaLinks';
 import { 
   Calendar, 
   CheckCircle2, 
@@ -120,7 +122,7 @@ export default function Dashboard() {
         </Link>
       </header>
 
-      {/* بطاقة الإحصائيات */}
+      {/* بطاقة الإحصائيات - أول شيء */}
       <Card className="glass-card mb-6 overflow-hidden animate-fade-in">
         <div className="absolute inset-0 bg-gradient-to-br from-primary/10 to-accent/10" />
         <CardContent className="relative p-4">
@@ -188,45 +190,8 @@ export default function Dashboard() {
         </Card>
       )}
 
-      {/* أهم 3 أولويات */}
+      {/* الإجراءات السريعة - ثاني شيء */}
       <section className="mb-6 animate-fade-in">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <Target className="w-5 h-5 text-primary" />
-            <h2 className="text-lg font-bold">أولوياتك اليوم</h2>
-          </div>
-          <Link to="/tasks">
-            <Button variant="ghost" size="sm" className="text-primary">
-              عرض الكل
-              <ChevronLeft className="w-4 h-4 mr-1" />
-            </Button>
-          </Link>
-        </div>
-
-        {topTasks.length === 0 ? (
-          <Card className="glass-card">
-            <CardContent className="p-6 text-center">
-              <Sparkles className="w-12 h-12 text-primary mx-auto mb-3 opacity-50" />
-              <p className="text-muted-foreground mb-4">لا توجد مهام حالياً</p>
-              <Link to="/tasks">
-                <Button className="btn-gradient">
-                  <Plus className="w-4 h-4 ml-2" />
-                  أضف مهمة جديدة
-                </Button>
-              </Link>
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="space-y-3">
-            {topTasks.map((task, index) => (
-              <TaskCard key={task.id} task={task} index={index + 1} />
-            ))}
-          </div>
-        )}
-      </section>
-
-      {/* الإجراءات السريعة */}
-      <section className="animate-fade-in">
         <h2 className="text-lg font-bold mb-4">إجراءات سريعة</h2>
         <div className="grid grid-cols-2 gap-3">
           <Link to="/tasks">
@@ -264,8 +229,8 @@ export default function Dashboard() {
                   <Calendar className="w-6 h-6 text-success" />
                 </div>
                 <div>
-                  <p className="font-medium">الخطة اليومية</p>
-                  <p className="text-xs text-muted-foreground">تنظيم اليوم</p>
+                  <p className="font-medium">التقويم</p>
+                  <p className="text-xs text-muted-foreground">عرض الخطة</p>
                 </div>
               </CardContent>
             </Card>
@@ -285,6 +250,53 @@ export default function Dashboard() {
             </Card>
           </Link>
         </div>
+      </section>
+
+      {/* متتبع شرب الماء */}
+      <section className="mb-6 animate-fade-in">
+        <WaterTracker />
+      </section>
+
+      {/* السوشل ميديا */}
+      <section className="mb-6 animate-fade-in">
+        <SocialMediaLinks />
+      </section>
+
+      {/* أولويات اليوم */}
+      <section className="animate-fade-in">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <Target className="w-5 h-5 text-primary" />
+            <h2 className="text-lg font-bold">أولوياتك اليوم</h2>
+          </div>
+          <Link to="/tasks">
+            <Button variant="ghost" size="sm" className="text-primary">
+              عرض الكل
+              <ChevronLeft className="w-4 h-4 mr-1" />
+            </Button>
+          </Link>
+        </div>
+
+        {topTasks.length === 0 ? (
+          <Card className="glass-card">
+            <CardContent className="p-6 text-center">
+              <Sparkles className="w-12 h-12 text-primary mx-auto mb-3 opacity-50" />
+              <p className="text-muted-foreground mb-4">لا توجد مهام حالياً</p>
+              <Link to="/tasks">
+                <Button className="btn-gradient">
+                  <Plus className="w-4 h-4 ml-2" />
+                  أضف مهمة جديدة
+                </Button>
+              </Link>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="space-y-3">
+            {topTasks.map((task, index) => (
+              <TaskCard key={task.id} task={task} index={index + 1} />
+            ))}
+          </div>
+        )}
       </section>
     </div>
   );
