@@ -1,10 +1,15 @@
 import { Outlet, Navigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { MobileNavigation } from './MobileNavigation';
+import { FloatingAssistantButton } from '@/components/assistant/FloatingAssistantButton';
+import { useAutoCommitment } from '@/hooks/useAutoCommitment';
 import { Loader2 } from 'lucide-react';
 
 export function AppLayout() {
   const { user, loading } = useAuth();
+  
+  // Auto-create work commitment on first use
+  useAutoCommitment();
 
   if (loading) {
     return (
@@ -27,6 +32,9 @@ export function AppLayout() {
       <main className="safe-bottom">
         <Outlet />
       </main>
+
+      {/* زر المساعد العائم */}
+      <FloatingAssistantButton />
 
       {/* شريط التنقل السفلي */}
       <MobileNavigation />

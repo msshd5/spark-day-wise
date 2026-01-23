@@ -199,6 +199,8 @@ export type Database = {
           part_time_days: string[] | null
           part_time_end_time: string | null
           part_time_start_time: string | null
+          social_linkedin: string | null
+          social_x: string | null
           timezone: string | null
           updated_at: string
           user_id: string
@@ -214,6 +216,8 @@ export type Database = {
           part_time_days?: string[] | null
           part_time_end_time?: string | null
           part_time_start_time?: string | null
+          social_linkedin?: string | null
+          social_x?: string | null
           timezone?: string | null
           updated_at?: string
           user_id: string
@@ -229,6 +233,8 @@ export type Database = {
           part_time_days?: string[] | null
           part_time_end_time?: string | null
           part_time_start_time?: string | null
+          social_linkedin?: string | null
+          social_x?: string | null
           timezone?: string | null
           updated_at?: string
           user_id?: string
@@ -351,6 +357,33 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      water_intake: {
+        Row: {
+          amount_ml: number
+          created_at: string
+          goal_ml: number
+          id: string
+          intake_date: string
+          user_id: string
+        }
+        Insert: {
+          amount_ml?: number
+          created_at?: string
+          goal_ml?: number
+          id?: string
+          intake_date?: string
+          user_id: string
+        }
+        Update: {
+          amount_ml?: number
+          created_at?: string
+          goal_ml?: number
+          id?: string
+          intake_date?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       weekly_plans: {
         Row: {

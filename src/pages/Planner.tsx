@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { Task, DailyPlan, taskPriorityLabels } from '@/types/database';
+import { Task, DailyPlan, taskPriorityLabels, Commitment, dayLabels } from '@/types/database';
+import { useCommitments } from '@/hooks/useCommitments';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { CommitmentBlock } from '@/components/planner/CommitmentBlock';
 import { toast } from 'sonner';
 import { 
   Calendar,
@@ -19,8 +21,9 @@ import {
   Moon,
   Target,
   Zap,
+  Lock,
 } from 'lucide-react';
-import { format, addDays, startOfWeek, endOfWeek, isToday, isSameDay } from 'date-fns';
+import { format, addDays, startOfWeek, isToday, isSameDay } from 'date-fns';
 import { ar } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 
@@ -30,6 +33,17 @@ export default function Planner() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [dailyPlan, setDailyPlan] = useState<DailyPlan | null>(null);
   const [loading, setLoading] = useState(true);
+  
+  const { commitments, getCommitmentsForDay } = useCommitments();
+
+  // Get day code for selected date
+  const getDayCode = (date: Date): string => {
+    const days = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+    return days[date.getDay()];
+  };
+
+  const selectedDayCode = getDayCode(selectedDate);
+  const dayCommitments = getCommitmentsForDay(selectedDayCode);
 
   useEffect(() => {
     if (user) {
@@ -83,6 +97,18 @@ export default function Planner() {
     setSelectedDate(prev => addDays(prev, direction === 'next' ? 7 : -7));
   };
 
+  // Helper to check if time falls within a commitment
+  const getCommitmentForTime = (hour: number): Commitment | null => {
+    for (const c of dayCommitments) {
+      const startHour = parseInt(c.start_time.split(':')[0]);
+      const endHour = parseInt(c.end_time.split(':')[0]);
+      if (hour >= startHour && hour < endHour) {
+        return c;
+      }
+    }
+    return null;
+  };
+
   // تقسيم المهام حسب وقت اليوم
   const morningTasks = tasks.filter(t => t.category === 'work' || t.priority === 'urgent');
   const afternoonTasks = tasks.filter(t => t.category === 'learning' || t.priority === 'high');
@@ -123,27 +149,35 @@ export default function Planner() {
               </div>
 
               <div className="grid grid-cols-7 gap-1">
-                {weekDays.map((day) => (
-                  <button
-                    key={day.toISOString()}
-                    onClick={() => setSelectedDate(day)}
-                    className={cn(
-                      "flex flex-col items-center p-2 rounded-xl transition-all",
-                      isSameDay(day, selectedDate) 
-                        ? "bg-primary text-primary-foreground" 
-                        : isToday(day)
-                        ? "bg-accent/20 text-accent"
-                        : "hover:bg-muted"
-                    )}
-                  >
-                    <span className="text-xs opacity-70">
-                      {format(day, 'EEE', { locale: ar })}
-                    </span>
-                    <span className="text-lg font-bold">
-                      {format(day, 'd')}
-                    </span>
-                  </button>
-                ))}
+                {weekDays.map((day) => {
+                  const dayCode = getDayCode(day);
+                  const hasCommitments = getCommitmentsForDay(dayCode).length > 0;
+                  
+                  return (
+                    <button
+                      key={day.toISOString()}
+                      onClick={() => setSelectedDate(day)}
+                      className={cn(
+                        "flex flex-col items-center p-2 rounded-xl transition-all relative",
+                        isSameDay(day, selectedDate) 
+                          ? "bg-primary text-primary-foreground" 
+                          : isToday(day)
+                          ? "bg-accent/20 text-accent"
+                          : "hover:bg-muted"
+                      )}
+                    >
+                      <span className="text-xs opacity-70">
+                        {format(day, 'EEE', { locale: ar })}
+                      </span>
+                      <span className="text-lg font-bold">
+                        {format(day, 'd')}
+                      </span>
+                      {hasCommitments && (
+                        <div className="absolute bottom-1 w-1.5 h-1.5 rounded-full bg-primary" />
+                      )}
+                    </button>
+                  );
+                })}
               </div>
             </CardContent>
           </Card>
@@ -182,15 +216,30 @@ export default function Planner() {
                   <p className="text-xs text-muted-foreground">ساعة</p>
                 </div>
                 <div className="text-center p-3 rounded-xl bg-muted/50">
-                  <Zap className="w-5 h-5 mx-auto mb-1 text-warning" />
-                  <p className="text-lg font-bold">
-                    {tasks.filter(t => t.priority === 'urgent' || t.priority === 'high').length}
-                  </p>
-                  <p className="text-xs text-muted-foreground">عاجل</p>
+                  <Lock className="w-5 h-5 mx-auto mb-1 text-blue-500" />
+                  <p className="text-lg font-bold">{dayCommitments.length}</p>
+                  <p className="text-xs text-muted-foreground">التزام</p>
                 </div>
               </div>
             </CardContent>
           </Card>
+
+          {/* الالتزامات */}
+          {dayCommitments.length > 0 && (
+            <Card className="glass-card">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Lock className="w-4 h-4 text-blue-500" />
+                  الالتزامات الثابتة
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                {dayCommitments.map((commitment) => (
+                  <CommitmentBlock key={commitment.id} commitment={commitment} />
+                ))}
+              </CardContent>
+            </Card>
+          )}
 
           {/* جدول اليوم */}
           {loading ? (
@@ -206,6 +255,7 @@ export default function Planner() {
                 subtitle="8:00 - 12:00"
                 tasks={morningTasks.slice(0, 3)}
                 color="text-warning"
+                commitment={getCommitmentForTime(9)}
               />
 
               {/* الظهر */}
@@ -215,6 +265,7 @@ export default function Planner() {
                 subtitle="12:00 - 17:00"
                 tasks={afternoonTasks.slice(0, 3)}
                 color="text-accent"
+                commitment={getCommitmentForTime(14)}
               />
 
               {/* المساء */}
@@ -224,6 +275,7 @@ export default function Planner() {
                 subtitle="17:00 - 22:00"
                 tasks={eveningTasks.slice(0, 3)}
                 color="text-primary"
+                commitment={getCommitmentForTime(19)}
               />
             </div>
           )}
@@ -259,13 +311,15 @@ function TimeBlock({
   title, 
   subtitle, 
   tasks, 
-  color 
+  color,
+  commitment,
 }: { 
   icon: React.ElementType; 
   title: string; 
   subtitle: string; 
   tasks: Task[];
   color: string;
+  commitment?: Commitment | null;
 }) {
   return (
     <Card className="glass-card">
@@ -274,13 +328,38 @@ function TimeBlock({
           <div className={cn("p-2 rounded-xl bg-muted", color)}>
             <Icon className="w-5 h-5" />
           </div>
-          <div>
+          <div className="flex-1">
             <h3 className="font-bold">{title}</h3>
             <p className="text-xs text-muted-foreground">{subtitle}</p>
           </div>
+          {commitment && (
+            <Badge 
+              variant="secondary" 
+              className="text-xs"
+              style={{ 
+                backgroundColor: `${commitment.color}20`,
+                color: commitment.color 
+              }}
+            >
+              <Lock className="w-3 h-3 ml-1" />
+              {commitment.title}
+            </Badge>
+          )}
         </div>
 
-        {tasks.length === 0 ? (
+        {commitment ? (
+          <div 
+            className="p-3 rounded-xl border-2 border-dashed text-center"
+            style={{ borderColor: commitment.color }}
+          >
+            <p className="text-sm text-muted-foreground">
+              محجوز: {commitment.title}
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">
+              {commitment.start_time} - {commitment.end_time}
+            </p>
+          </div>
+        ) : tasks.length === 0 ? (
           <p className="text-sm text-muted-foreground text-center py-4">
             لا توجد مهام مجدولة
           </p>
