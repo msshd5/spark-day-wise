@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { WaterTracker } from '@/components/dashboard/WaterTracker';
-import { SocialMediaLinks } from '@/components/dashboard/SocialMediaLinks';
+import { SocialMediaPlanner } from '@/components/dashboard/SocialMediaPlanner';
 import { 
   Calendar, 
   CheckCircle2, 
@@ -257,9 +257,9 @@ export default function Dashboard() {
         <WaterTracker />
       </section>
 
-      {/* السوشل ميديا */}
+      {/* تخطيط المحتوى */}
       <section className="mb-6 animate-fade-in">
-        <SocialMediaLinks />
+        <SocialMediaPlanner />
       </section>
 
       {/* أولويات اليوم */}
