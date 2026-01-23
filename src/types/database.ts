@@ -133,6 +133,7 @@ export interface AIMessage {
   created_at: string;
 }
 
+// ترجمات الأنواع للعربية
 export const taskStatusLabels: Record<TaskStatus, string> = {
   pending: 'جديد',
   in_progress: 'قيد التنفيذ',
