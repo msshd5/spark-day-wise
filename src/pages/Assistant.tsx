@@ -1,23 +1,23 @@
 import { useState, useRef, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/integrations/supabase/client';
-import { Card, CardContent } from '@/components/ui/card';
+import { useUserContext } from '@/hooks/useUserContext';
+import { useSpeech } from '@/hooks/useSpeech';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { MessageBubble } from '@/components/assistant/MessageBubble';
+import { VoiceButton } from '@/components/assistant/VoiceButton';
 import { toast } from 'sonner';
 import { 
   Send, 
   Sparkles,
-  Bot,
-  User,
   Calendar,
   ListTodo,
   Target,
   HelpCircle,
   Loader2,
+  Bot,
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
 
 interface Message {
   id: string;
@@ -27,21 +27,32 @@ interface Message {
 }
 
 const quickCommands = [
-  { icon: Calendar, label: 'رتّب يومي', command: 'رتّب يومي' },
-  { icon: ListTodo, label: 'قسّم المهمة', command: 'قسّم المهمة' },
-  { icon: Target, label: 'خطة أسبوع', command: 'سوّي خطة أسبوع' },
-  { icon: HelpCircle, label: 'وش الأهم؟', command: 'وش الأهم الآن؟' },
+  { icon: Calendar, label: 'رتّب يومي', command: 'رتّب يومي حسب الالتزامات والمهام المتاحة' },
+  { icon: ListTodo, label: 'قسّم المهمة', command: 'قسّم لي أهم مهمة لخطوات صغيرة' },
+  { icon: Target, label: 'خطة أسبوع', command: 'سوّي لي خطة للأسبوع القادم' },
+  { icon: HelpCircle, label: 'وش الأهم؟', command: 'بناءً على مهامي، وش الأهم أبدأ فيه الآن؟' },
 ];
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-chat`;
 
 export default function Assistant() {
   const { profile } = useAuth();
+  const { getContextSummary, refetch: refetchContext } = useUserContext();
+  const { 
+    isListening, 
+    isSpeaking, 
+    transcript, 
+    isSupported,
+    toggleListening, 
+    speak, 
+    stopSpeaking 
+  } = useSpeech();
+
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
       role: 'assistant',
-      content: `أهلاً ${profile?.name || 'صديقي'}! 👋\n\nأنا مساعدك الذكي، موجود لمساعدتك في:\n\n• ترتيب يومك وأولوياتك\n• تقسيم المهام الكبيرة\n• إنشاء خطط أسبوعية\n• الإجابة على استفساراتك\n\nكيف أقدر أساعدك اليوم؟`,
+      content: `أهلاً ${profile?.name || 'صديقي'}! 👋\n\nأنا مساعدك الذكي، موجود لمساعدتك في:\n\n• ترتيب يومك وأولوياتك\n• تقسيم المهام الكبيرة\n• إنشاء خطط أسبوعية\n• الإجابة على استفساراتك\n\nأنا مربوط بمهامك والتزاماتك، فأقدر أساعدك بشكل أفضل! 🎯\n\nكيف أقدر أساعدك اليوم؟`,
       timestamp: new Date(),
     },
   ]);
@@ -49,13 +60,24 @@ export default function Assistant() {
   const [isLoading, setIsLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
+  // تحديث الإدخال عند الاستماع
+  useEffect(() => {
+    if (transcript) {
+      setInput(transcript);
+    }
+  }, [transcript]);
+
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages]);
 
-  const streamChat = async (userMessage: string) => {
+  const streamChat = async (userMessage: string, generatePlan = false) => {
+    // تحديث السياق
+    await refetchContext();
+    const userContext = getContextSummary();
+
     // إضافة رسالة المستخدم
     const userMsg: Message = {
       id: Date.now().toString(),
@@ -82,7 +104,11 @@ export default function Assistant() {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
         },
-        body: JSON.stringify({ messages: chatHistory }),
+        body: JSON.stringify({ 
+          messages: chatHistory,
+          userContext,
+          generatePlan,
+        }),
       });
 
       if (!response.ok) {
@@ -191,12 +217,16 @@ export default function Assistant() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim() || isLoading) return;
-    streamChat(input.trim());
+    
+    // إذا كان الإدخال يتعلق بترتيب اليوم
+    const isGeneratePlan = input.includes('رتّب') || input.includes('خطة') || input.includes('جدول');
+    streamChat(input.trim(), isGeneratePlan);
   };
 
   const handleQuickCommand = (command: string) => {
     if (isLoading) return;
-    streamChat(command);
+    const isGeneratePlan = command.includes('رتّب') || command.includes('خطة');
+    streamChat(command, isGeneratePlan);
   };
 
   return (
@@ -210,7 +240,7 @@ export default function Assistant() {
           <div>
             <h1 className="font-bold text-lg">المساعد الذكي</h1>
             <p className="text-xs text-muted-foreground">
-              {isLoading ? 'يفكر...' : 'متصل ونشط'}
+              {isLoading ? 'يفكر...' : isListening ? '🎤 يستمع...' : 'متصل ومربوط بمهامك'}
             </p>
           </div>
         </div>
@@ -220,7 +250,12 @@ export default function Assistant() {
       <ScrollArea className="flex-1 p-4" ref={scrollRef}>
         <div className="space-y-4 max-w-2xl mx-auto">
           {messages.map((message) => (
-            <MessageBubble key={message.id} message={message} />
+            <MessageBubble 
+              key={message.id} 
+              message={message}
+              onSpeak={speak}
+              canSpeak={isSupported}
+            />
           ))}
           
           {isLoading && messages[messages.length - 1]?.role !== 'assistant' && (
@@ -259,10 +294,17 @@ export default function Assistant() {
       {/* حقل الإدخال */}
       <div className="p-4 border-t border-border/50 bg-card/50 backdrop-blur-xl">
         <form onSubmit={handleSubmit} className="flex gap-2 max-w-2xl mx-auto">
+          <VoiceButton
+            isListening={isListening}
+            isSpeaking={isSpeaking}
+            isSupported={isSupported}
+            onToggleListening={toggleListening}
+            onStopSpeaking={stopSpeaking}
+          />
           <Input
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="اكتب رسالتك هنا..."
+            placeholder={isListening ? 'يستمع...' : 'اكتب رسالتك هنا...'}
             className="flex-1 bg-muted border-border"
             disabled={isLoading}
           />
@@ -280,41 +322,6 @@ export default function Assistant() {
           </Button>
         </form>
       </div>
-    </div>
-  );
-}
-
-function MessageBubble({ message }: { message: Message }) {
-  const isUser = message.role === 'user';
-
-  return (
-    <div className={cn(
-      "flex items-start gap-3 animate-fade-in",
-      isUser && "flex-row-reverse"
-    )}>
-      <div className={cn(
-        "p-2 rounded-full shrink-0",
-        isUser ? "bg-primary/20" : "bg-accent/20"
-      )}>
-        {isUser ? (
-          <User className="w-5 h-5 text-primary" />
-        ) : (
-          <Bot className="w-5 h-5 text-accent" />
-        )}
-      </div>
-
-      <Card className={cn(
-        "max-w-[80%]",
-        isUser 
-          ? "bg-primary text-primary-foreground" 
-          : "glass-card"
-      )}>
-        <CardContent className="p-3">
-          <p className="text-sm whitespace-pre-wrap leading-relaxed">
-            {message.content || '...'}
-          </p>
-        </CardContent>
-      </Card>
     </div>
   );
 }

@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -18,9 +19,11 @@ const SYSTEM_PROMPT = `أنت مساعد شخصي ذكي باللغة العرب
 3. استخدم الإيموجي بشكل معتدل لتوضيح النقاط
 4. قدم نصائح قابلة للتنفيذ فوراً
 5. شجع المستخدم وحفزه
-6. إذا طلب ترتيب اليوم، اقترح جدول واضح بالأوقات
+6. إذا طلب ترتيب اليوم، اقترح جدول واضح بالأوقات مع مراعاة الالتزامات الثابتة
 7. إذا طلب تقسيم مهمة، قسمها لخطوات صغيرة (15-30 دقيقة لكل خطوة)
-8. امنع التشتت - إذا أراد إضافة مشروع جديد، اسأله: "وش بنوقف مقابله؟"`;
+8. امنع التشتت - إذا أراد إضافة مشروع جديد، اسأله: "وش بنوقف مقابله؟"
+9. عند إنشاء خطة يوم، راعِ أوقات الدوام والالتزامات الثابتة
+10. ضع المهام الصعبة في أوقات الطاقة العالية (عادة الصباح)`;
 
 serve(async (req) => {
   // Handle CORS preflight
@@ -29,16 +32,34 @@ serve(async (req) => {
   }
 
   try {
-    const { messages, type } = await req.json();
+    const { messages, userContext, generatePlan } = await req.json();
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     
     if (!LOVABLE_API_KEY) {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
 
+    // إضافة سياق المستخدم للـ System Prompt
+    let enhancedSystemPrompt = SYSTEM_PROMPT;
+    
+    if (userContext) {
+      enhancedSystemPrompt += `\n\n--- معلومات المستخدم الحالية ---\n${userContext}`;
+    }
+
+    // إذا كان المطلوب إنشاء خطة يوم
+    if (generatePlan) {
+      enhancedSystemPrompt += `\n\n🎯 المطلوب الآن: إنشاء خطة يوم هجينة تحترم الالتزامات الثابتة وتوزع المهام المرنة حولها.
+اقترح جدول بالشكل التالي:
+⏰ [الوقت] - [النشاط/المهمة] - [المدة]
+مع مراعاة:
+- فترات الراحة
+- أوقات الطاقة العالية/المنخفضة
+- عدم التعارض مع الالتزامات الثابتة`;
+    }
+
     // بناء رسائل المحادثة
     const chatMessages = [
-      { role: "system", content: SYSTEM_PROMPT },
+      { role: "system", content: enhancedSystemPrompt },
       ...messages,
     ];
 
