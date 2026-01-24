@@ -9,10 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { WaterTracker } from '@/components/dashboard/WaterTracker';
 import { SocialMediaPlanner } from '@/components/dashboard/SocialMediaPlanner';
-import { ContentCalendar } from '@/components/dashboard/ContentCalendar';
 import { IdeasNote } from '@/components/dashboard/IdeasNote';
-import { FastingTracker } from '@/components/dashboard/FastingTracker';
-import { SleepTracker } from '@/components/dashboard/SleepTracker';
 import { 
   Calendar, 
   CheckCircle2, 
@@ -24,6 +21,7 @@ import {
   Sparkles,
   Target,
   TrendingUp,
+  FileText,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ar } from 'date-fns/locale';
@@ -253,31 +251,25 @@ export default function Dashboard() {
               </CardContent>
             </Card>
           </Link>
+
+          <Link to="/content">
+            <Card className="glass-card hover:border-blue-500/50 transition-all cursor-pointer col-span-2">
+              <CardContent className="p-4 flex items-center gap-3">
+                <div className="p-3 rounded-xl bg-blue-500/20">
+                  <FileText className="w-6 h-6 text-blue-500" />
+                </div>
+                <div>
+                  <p className="font-medium">مركز المحتوى</p>
+                  <p className="text-xs text-muted-foreground">إدارة X و LinkedIn</p>
+                </div>
+              </CardContent>
+            </Card>
+          </Link>
         </div>
-      </section>
-
-      {/* تتبع الصحة: النوم والصيام والماء */}
-      <section className="mb-6 animate-fade-in space-y-4">
-        <div className="grid grid-cols-1 gap-4">
-          <SleepTracker />
-          <FastingTracker />
-          <WaterTracker />
-        </div>
-      </section>
-
-      {/* مذكرة الأفكار */}
-      <section className="mb-6 animate-fade-in">
-        <IdeasNote />
-      </section>
-
-      {/* تخطيط المحتوى */}
-      <section className="mb-6 animate-fade-in space-y-4">
-        <SocialMediaPlanner />
-        <ContentCalendar />
       </section>
 
       {/* أولويات اليوم */}
-      <section className="animate-fade-in">
+      <section className="mb-6 animate-fade-in">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <Target className="w-5 h-5 text-primary" />
@@ -312,6 +304,22 @@ export default function Dashboard() {
           </div>
         )}
       </section>
+
+      {/* شرب الماء */}
+      <section className="mb-6 animate-fade-in">
+        <WaterTracker />
+      </section>
+
+      {/* مذكرة الأفكار */}
+      <section className="mb-6 animate-fade-in">
+        <IdeasNote />
+      </section>
+
+      {/* تخطيط المحتوى */}
+      <section className="mb-6 animate-fade-in">
+        <SocialMediaPlanner />
+      </section>
+
     </div>
   );
 }
