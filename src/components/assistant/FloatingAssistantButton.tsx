@@ -12,7 +12,7 @@ export function FloatingAssistantButton() {
       <Button
         onClick={() => setOpen(true)}
         className={cn(
-          "fixed bottom-20 left-4 z-40 h-14 w-14 rounded-full shadow-lg",
+          "fixed bottom-20 right-4 z-40 h-14 w-14 rounded-full shadow-lg",
           "bg-gradient-to-br from-primary to-accent",
           "hover:scale-105 transition-transform duration-200",
           "animate-pulse-subtle"
