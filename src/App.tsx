@@ -17,6 +17,7 @@ import Planner from "./pages/Planner";
 import Assistant from "./pages/Assistant";
 import Settings from "./pages/Settings";
 import Review from "./pages/Review";
+import ContentHub from "./pages/ContentHub";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -50,6 +51,7 @@ const App = () => (
               <Route path="/assistant" element={<Assistant />} />
               <Route path="/settings" element={<Settings />} />
               <Route path="/review" element={<Review />} />
+              <Route path="/content" element={<ContentHub />} />
             </Route>
             
             {/* صفحة 404 */}
