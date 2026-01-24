@@ -9,6 +9,10 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { WaterTracker } from '@/components/dashboard/WaterTracker';
 import { SocialMediaPlanner } from '@/components/dashboard/SocialMediaPlanner';
+import { ContentCalendar } from '@/components/dashboard/ContentCalendar';
+import { IdeasNote } from '@/components/dashboard/IdeasNote';
+import { FastingTracker } from '@/components/dashboard/FastingTracker';
+import { SleepTracker } from '@/components/dashboard/SleepTracker';
 import { 
   Calendar, 
   CheckCircle2, 
@@ -252,14 +256,24 @@ export default function Dashboard() {
         </div>
       </section>
 
-      {/* متتبع شرب الماء */}
+      {/* تتبع الصحة: النوم والصيام والماء */}
+      <section className="mb-6 animate-fade-in space-y-4">
+        <div className="grid grid-cols-1 gap-4">
+          <SleepTracker />
+          <FastingTracker />
+          <WaterTracker />
+        </div>
+      </section>
+
+      {/* مذكرة الأفكار */}
       <section className="mb-6 animate-fade-in">
-        <WaterTracker />
+        <IdeasNote />
       </section>
 
       {/* تخطيط المحتوى */}
-      <section className="mb-6 animate-fade-in">
+      <section className="mb-6 animate-fade-in space-y-4">
         <SocialMediaPlanner />
+        <ContentCalendar />
       </section>
 
       {/* أولويات اليوم */}
