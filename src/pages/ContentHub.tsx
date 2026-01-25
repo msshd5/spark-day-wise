@@ -25,6 +25,8 @@ import {
   CheckCircle,
   Clock,
   FileText,
+  Copy,
+  ExternalLink,
 } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isToday, startOfWeek } from 'date-fns';
 import { ar } from 'date-fns/locale';
@@ -118,6 +120,26 @@ export default function ContentHub() {
   const markAsPosted = (id: string) => {
     saveIdeas(ideas.map(i => i.id === id ? { ...i, status: 'posted' as const } : i));
     toast.success('تم التحديث');
+  };
+
+  const copyToClipboard = (content: string) => {
+    navigator.clipboard.writeText(content);
+    toast.success('تم نسخ المحتوى');
+  };
+
+  const openApp = (platform: 'x' | 'linkedin', content: string) => {
+    const encodedContent = encodeURIComponent(content);
+    let url = '';
+    
+    if (platform === 'x') {
+      // Try Twitter app first, fallback to web
+      url = `https://twitter.com/intent/tweet?text=${encodedContent}`;
+    } else {
+      // LinkedIn share
+      url = `https://www.linkedin.com/sharing/share-offsite/?url=&summary=${encodedContent}`;
+    }
+    
+    window.open(url, '_blank');
   };
 
   // Filtered ideas
@@ -382,26 +404,47 @@ export default function ContentHub() {
                         </div>
                       </div>
                     </div>
-                    <div className="flex justify-end gap-2 mt-3 pt-3 border-t border-border/50">
-                      {idea.status !== 'posted' && (
+                    <div className="flex justify-between gap-2 mt-3 pt-3 border-t border-border/50">
+                      <div className="flex gap-1">
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => markAsPosted(idea.id)}
+                          onClick={() => copyToClipboard(idea.content)}
+                          title="نسخ"
                         >
-                          <CheckCircle className="w-3 h-3 ml-1" />
-                          نُشر
+                          <Copy className="w-3 h-3 ml-1" />
+                          نسخ
                         </Button>
-                      )}
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="text-destructive"
-                        onClick={() => deleteIdea(idea.id)}
-                      >
-                        <Trash2 className="w-3 h-3 ml-1" />
-                        حذف
-                      </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => openApp(idea.platform, idea.content)}
+                          title={`فتح ${idea.platform === 'x' ? 'X' : 'LinkedIn'}`}
+                        >
+                          <ExternalLink className="w-3 h-3 ml-1" />
+                          فتح
+                        </Button>
+                      </div>
+                      <div className="flex gap-1">
+                        {idea.status !== 'posted' && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => markAsPosted(idea.id)}
+                          >
+                            <CheckCircle className="w-3 h-3 ml-1" />
+                            نُشر
+                          </Button>
+                        )}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-destructive"
+                          onClick={() => deleteIdea(idea.id)}
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </Button>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
