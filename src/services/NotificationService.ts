@@ -152,6 +152,49 @@ class NotificationService {
     });
   }
 
+  // تذكيرات شرب الماء كل ساعتين
+  async scheduleWaterReminders() {
+    const waterReminderHours = [9, 11, 13, 15, 17, 19];
+    
+    for (let i = 0; i < waterReminderHours.length; i++) {
+      const hour = waterReminderHours[i];
+      const now = new Date();
+      const reminderTime = new Date();
+      reminderTime.setHours(hour, 0, 0, 0);
+
+      if (reminderTime <= now) {
+        reminderTime.setDate(reminderTime.getDate() + 1);
+      }
+
+      await this.scheduleReminder({
+        id: 900 + i,
+        title: '💧 وقت شرب الماء',
+        body: 'لا تنس شرب كوب من الماء للحفاظ على نشاطك!',
+        scheduledAt: reminderTime,
+        data: { type: 'water_reminder', hour },
+      });
+    }
+  }
+
+  // تذكير يومي بالمهام
+  async scheduleDailyTaskReminder(hour: number = 9, minute: number = 30) {
+    const now = new Date();
+    const reminderTime = new Date();
+    reminderTime.setHours(hour, minute, 0, 0);
+
+    if (reminderTime <= now) {
+      reminderTime.setDate(reminderTime.getDate() + 1);
+    }
+
+    await this.scheduleReminder({
+      id: 997,
+      title: '📋 مهامك اليوم',
+      body: 'لديك مهام في انتظارك! افتح التطبيق لمراجعتها',
+      scheduledAt: reminderTime,
+      data: { type: 'daily_tasks' },
+    });
+  }
+
   async cancelReminder(notificationId: number) {
     if (!Capacitor.isNativePlatform()) return;
 
