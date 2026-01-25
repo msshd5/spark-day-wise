@@ -4,14 +4,27 @@ import { notificationService } from '@/services/NotificationService';
 
 export function useNotifications() {
   useEffect(() => {
-    // تهيئة الإشعارات عند بدء التطبيق
-    notificationService.initialize();
+    const initNotifications = async () => {
+      // تهيئة الإشعارات عند بدء التطبيق
+      await notificationService.initialize();
 
-    // جدولة التذكيرات اليومية
-    if (Capacitor.isNativePlatform()) {
-      notificationService.scheduleMorningPlanReminder(8, 0);
-      notificationService.scheduleDailyReviewReminder(21, 0);
-    }
+      // جدولة التذكيرات اليومية
+      if (Capacitor.isNativePlatform()) {
+        // تذكير صباحي بالخطة
+        await notificationService.scheduleMorningPlanReminder(8, 0);
+        
+        // تذكير بالمهام اليومية
+        await notificationService.scheduleDailyTaskReminder(9, 30);
+        
+        // تذكيرات شرب الماء كل ساعتين
+        await notificationService.scheduleWaterReminders();
+        
+        // تذكير المراجعة المسائية
+        await notificationService.scheduleDailyReviewReminder(21, 0);
+      }
+    };
+
+    initNotifications();
   }, []);
 
   return {
@@ -20,5 +33,6 @@ export function useNotifications() {
     scheduleReminder: notificationService.scheduleReminder.bind(notificationService),
     cancelReminder: notificationService.cancelReminder.bind(notificationService),
     getPendingReminders: notificationService.getPendingReminders.bind(notificationService),
+    scheduleWaterReminders: notificationService.scheduleWaterReminders.bind(notificationService),
   };
 }
