@@ -22,6 +22,7 @@ import {
   Target,
   TrendingUp,
   FileText,
+  Heart,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ar } from 'date-fns/locale';
@@ -253,14 +254,28 @@ export default function Dashboard() {
           </Link>
 
           <Link to="/content">
-            <Card className="glass-card hover:border-blue-500/50 transition-all cursor-pointer col-span-2">
+            <Card className="glass-card hover:border-blue-500/50 transition-all cursor-pointer">
               <CardContent className="p-4 flex items-center gap-3">
                 <div className="p-3 rounded-xl bg-blue-500/20">
                   <FileText className="w-6 h-6 text-blue-500" />
                 </div>
                 <div>
                   <p className="font-medium">مركز المحتوى</p>
-                  <p className="text-xs text-muted-foreground">إدارة X و LinkedIn</p>
+                  <p className="text-xs text-muted-foreground">X و LinkedIn</p>
+                </div>
+              </CardContent>
+            </Card>
+          </Link>
+
+          <Link to="/health">
+            <Card className="glass-card hover:border-pink-500/50 transition-all cursor-pointer">
+              <CardContent className="p-4 flex items-center gap-3">
+                <div className="p-3 rounded-xl bg-pink-500/20">
+                  <Heart className="w-6 h-6 text-pink-500" />
+                </div>
+                <div>
+                  <p className="font-medium">الصحة</p>
+                  <p className="text-xs text-muted-foreground">الصيام والنوم</p>
                 </div>
               </CardContent>
             </Card>
