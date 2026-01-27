@@ -11,19 +11,22 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 import { toast } from 'sonner';
 import { 
   Plus, 
   Search, 
   Filter,
   Clock,
-  Calendar,
+  Calendar as CalendarIcon,
   CheckCircle2,
   Circle,
   Loader2,
   MoreVertical,
   Trash2,
   Edit,
+  CalendarDays,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ar } from 'date-fns/locale';
@@ -343,8 +346,8 @@ function TaskItem({
               
               {task.due_date && (
                 <span className="text-xs text-muted-foreground flex items-center gap-1">
-                  <Calendar className="w-3 h-3" />
-                  {format(new Date(task.due_date), 'd MMM', { locale: ar })}
+                  <CalendarIcon className="w-3 h-3" />
+                  {format(new Date(task.due_date), 'd MMM h:mm a', { locale: ar })}
                 </span>
               )}
               
@@ -383,12 +386,28 @@ function AddTaskForm({ userId, onSuccess }: { userId: string; onSuccess: () => v
   const [priority, setPriority] = useState<TaskPriority>('medium');
   const [category, setCategory] = useState<TaskCategory>('work');
   const [estimatedDuration, setEstimatedDuration] = useState('');
+  const [dueDate, setDueDate] = useState<Date | undefined>();
+  const [dueTime, setDueTime] = useState('');
+  const [showDatePicker, setShowDatePicker] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) {
       toast.error('يرجى إدخال عنوان المهمة');
       return;
+    }
+
+    // دمج التاريخ والوقت
+    let dueDateISO: string | null = null;
+    if (dueDate) {
+      const dateToSave = new Date(dueDate);
+      if (dueTime) {
+        const [hours, minutes] = dueTime.split(':').map(Number);
+        dateToSave.setHours(hours, minutes, 0, 0);
+      } else {
+        dateToSave.setHours(23, 59, 0, 0);
+      }
+      dueDateISO = dateToSave.toISOString();
     }
 
     setLoading(true);
@@ -399,6 +418,7 @@ function AddTaskForm({ userId, onSuccess }: { userId: string; onSuccess: () => v
       priority,
       category,
       estimated_duration: estimatedDuration ? parseInt(estimatedDuration) : null,
+      due_date: dueDateISO,
     });
 
     setLoading(false);
@@ -413,7 +433,7 @@ function AddTaskForm({ userId, onSuccess }: { userId: string; onSuccess: () => v
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form onSubmit={handleSubmit} className="space-y-4 max-h-[70vh] overflow-y-auto px-1">
       <div className="space-y-2">
         <Label htmlFor="title">العنوان *</Label>
         <Input
@@ -433,8 +453,67 @@ function AddTaskForm({ userId, onSuccess }: { userId: string; onSuccess: () => v
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           className="bg-input border-border resize-none"
-          rows={3}
+          rows={2}
         />
+      </div>
+
+      {/* التاريخ والوقت */}
+      <div className="space-y-2">
+        <Label className="flex items-center gap-2">
+          <CalendarDays className="w-4 h-4" />
+          موعد التنفيذ
+        </Label>
+        <div className="grid grid-cols-2 gap-2">
+          <Popover open={showDatePicker} onOpenChange={setShowDatePicker}>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                className={cn(
+                  "justify-start text-right font-normal bg-input border-border",
+                  !dueDate && "text-muted-foreground"
+                )}
+              >
+                <CalendarIcon className="ml-2 h-4 w-4" />
+                {dueDate ? format(dueDate, 'd MMM yyyy', { locale: ar }) : 'اختر التاريخ'}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0 bg-popover border-border z-[100]" align="start">
+              <CalendarComponent
+                mode="single"
+                selected={dueDate}
+                onSelect={(date) => {
+                  setDueDate(date);
+                  setShowDatePicker(false);
+                }}
+                disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
+                initialFocus
+                className="pointer-events-auto"
+              />
+            </PopoverContent>
+          </Popover>
+
+          <div className="relative">
+            <Clock className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              type="time"
+              value={dueTime}
+              onChange={(e) => setDueTime(e.target.value)}
+              className="bg-input border-border pr-10"
+              placeholder="الوقت"
+            />
+          </div>
+        </div>
+        {dueDate && (
+          <Button 
+            type="button" 
+            variant="ghost" 
+            size="sm" 
+            onClick={() => { setDueDate(undefined); setDueTime(''); }}
+            className="text-xs text-muted-foreground"
+          >
+            إزالة الموعد
+          </Button>
+        )}
       </div>
 
       <div className="grid grid-cols-2 gap-4">
