@@ -33,8 +33,7 @@ import {
   Star,
   Edit2,
   Repeat,
-  PieChart,
-  BarChart3,
+  Target,
 } from 'lucide-react';
 import { format, startOfMonth } from 'date-fns';
 import { ar } from 'date-fns/locale';
@@ -45,6 +44,13 @@ interface Budget {
   id: string;
   month: string;
   total_budget: number;
+}
+
+interface CategoryBudget {
+  id: string;
+  month: string;
+  category: string;
+  planned_amount: number;
 }
 
 interface Expense {
@@ -104,6 +110,7 @@ const frequencyLabels: Record<string, string> = {
 export default function Finance() {
   const { user } = useAuth();
   const [budget, setBudget] = useState<Budget | null>(null);
+  const [categoryBudgets, setCategoryBudgets] = useState<CategoryBudget[]>([]);
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [wishlist, setWishlist] = useState<WishlistItem[]>([]);
   const [recurringExpenses, setRecurringExpenses] = useState<RecurringExpense[]>([]);
@@ -115,6 +122,7 @@ export default function Finance() {
   const [showExpenseDialog, setShowExpenseDialog] = useState(false);
   const [showWishlistDialog, setShowWishlistDialog] = useState(false);
   const [showRecurringDialog, setShowRecurringDialog] = useState(false);
+  const [showCategoryBudgetDialog, setShowCategoryBudgetDialog] = useState(false);
   
   const [expenseForm, setExpenseForm] = useState({
     title: '',
@@ -139,6 +147,11 @@ export default function Finance() {
     notes: '',
   });
 
+  const [categoryBudgetForm, setCategoryBudgetForm] = useState({
+    category: 'transport',
+    planned_amount: '',
+  });
+
   const currentMonth = startOfMonth(new Date()).toISOString().split('T')[0];
 
   useEffect(() => {
@@ -151,6 +164,7 @@ export default function Finance() {
     setLoading(true);
     await Promise.all([
       fetchBudget(),
+      fetchCategoryBudgets(),
       fetchExpenses(),
       fetchWishlist(),
       fetchRecurringExpenses(),
@@ -167,6 +181,16 @@ export default function Finance() {
       .maybeSingle();
     
     setBudget(data);
+  };
+
+  const fetchCategoryBudgets = async () => {
+    const { data } = await supabase
+      .from('category_budgets')
+      .select('*')
+      .eq('user_id', user!.id)
+      .eq('month', currentMonth);
+    
+    setCategoryBudgets(data || []);
   };
 
   const fetchExpenses = async () => {
@@ -228,6 +252,45 @@ export default function Finance() {
     setShowBudgetDialog(false);
     setNewBudget('');
     fetchBudget();
+  };
+
+  const saveCategoryBudget = async () => {
+    const amount = parseFloat(categoryBudgetForm.planned_amount);
+    if (isNaN(amount) || amount <= 0) {
+      toast.error('أدخل مبلغ صحيح');
+      return;
+    }
+
+    const existingBudget = categoryBudgets.find(
+      cb => cb.category === categoryBudgetForm.category
+    );
+
+    if (existingBudget) {
+      await supabase
+        .from('category_budgets')
+        .update({ planned_amount: amount })
+        .eq('id', existingBudget.id);
+    } else {
+      await supabase
+        .from('category_budgets')
+        .insert({
+          user_id: user!.id,
+          month: currentMonth,
+          category: categoryBudgetForm.category,
+          planned_amount: amount,
+        });
+    }
+
+    toast.success('تم حفظ ميزانية الفئة');
+    setShowCategoryBudgetDialog(false);
+    setCategoryBudgetForm({ category: 'transport', planned_amount: '' });
+    fetchCategoryBudgets();
+  };
+
+  const deleteCategoryBudget = async (id: string) => {
+    await supabase.from('category_budgets').delete().eq('id', id);
+    toast.success('تم الحذف');
+    fetchCategoryBudgets();
   };
 
   const addExpense = async () => {
@@ -347,18 +410,30 @@ export default function Finance() {
   const remainingBudget = budget ? Number(budget.total_budget) - totalExpenses - totalRecurring : 0;
   const spentPercentage = budget ? ((totalExpenses + totalRecurring) / Number(budget.total_budget)) * 100 : 0;
 
-  // إحصائيات حسب التصنيف
-  const expensesByCategory = expenseCategories.map(cat => {
+  // حساب المخطط vs الفعلي لكل فئة
+  const categoryComparison = expenseCategories.map(cat => {
     const catExpenses = expenses.filter(e => e.category === cat.value);
     const catRecurring = recurringExpenses.filter(e => e.category === cat.value && e.is_active);
-    const total = catExpenses.reduce((sum, e) => sum + Number(e.amount), 0) +
-                  catRecurring.reduce((sum, e) => sum + Number(e.amount), 0);
+    const actualAmount = catExpenses.reduce((sum, e) => sum + Number(e.amount), 0) +
+                        catRecurring.reduce((sum, e) => sum + Number(e.amount), 0);
+    const plannedBudget = categoryBudgets.find(cb => cb.category === cat.value);
+    const plannedAmount = plannedBudget ? Number(plannedBudget.planned_amount) : 0;
+    
     return {
       ...cat,
-      total,
+      actualAmount,
+      plannedAmount,
+      budgetId: plannedBudget?.id,
       count: catExpenses.length + catRecurring.length,
+      percentage: plannedAmount > 0 ? (actualAmount / plannedAmount) * 100 : 0,
+      remaining: plannedAmount - actualAmount,
     };
-  }).filter(cat => cat.total > 0).sort((a, b) => b.total - a.total);
+  });
+
+  // الفئات التي لها ميزانية مخططة
+  const categoriesWithBudget = categoryComparison.filter(cat => cat.plannedAmount > 0);
+  // الفئات التي فيها صرف فعلي
+  const categoriesWithSpending = categoryComparison.filter(cat => cat.actualAmount > 0);
 
   const getCategoryIcon = (category: string) => {
     return expenseCategories.find(c => c.value === category)?.icon || '📦';
@@ -460,46 +535,64 @@ export default function Finance() {
         </CardContent>
       </Card>
 
-      {/* إحصائيات حسب التصنيف */}
-      {expensesByCategory.length > 0 && (
+      {/* مقارنة المخطط vs الفعلي */}
+      {categoriesWithBudget.length > 0 && (
         <Card className="glass-card mb-6">
           <CardHeader className="pb-2">
             <CardTitle className="text-base flex items-center gap-2">
-              <BarChart3 className="w-5 h-5 text-primary" />
-              توزيع المصروفات
+              <Target className="w-5 h-5 text-primary" />
+              المخطط vs الفعلي
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-3">
-            {expensesByCategory.slice(0, 5).map((cat) => {
-              const percentage = budget ? (cat.total / Number(budget.total_budget)) * 100 : 0;
-              return (
-                <div key={cat.value} className="space-y-1">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="flex items-center gap-2">
-                      <span>{cat.icon}</span>
-                      <span>{cat.label}</span>
+          <CardContent className="space-y-4">
+            {categoriesWithBudget.map((cat) => (
+              <div key={cat.value} className="space-y-2">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="flex items-center gap-2">
+                    <span>{cat.icon}</span>
+                    <span>{cat.label}</span>
+                  </span>
+                  <div className="text-left">
+                    <span className={cn(
+                      "font-bold",
+                      cat.percentage > 100 ? "text-destructive" : cat.percentage > 80 ? "text-warning" : "text-success"
+                    )}>
+                      {cat.actualAmount.toLocaleString()}
                     </span>
-                    <span className="font-bold">{cat.total.toLocaleString()} ر.س</span>
-                  </div>
-                  <div className="h-2 bg-muted rounded-full overflow-hidden">
-                    <div 
-                      className="h-full rounded-full transition-all"
-                      style={{ 
-                        width: `${Math.min(percentage, 100)}%`,
-                        backgroundColor: cat.color,
-                      }}
-                    />
+                    <span className="text-muted-foreground"> / {cat.plannedAmount.toLocaleString()} ر.س</span>
                   </div>
                 </div>
-              );
-            })}
+                <div className="h-3 bg-muted rounded-full overflow-hidden">
+                  <div 
+                    className={cn(
+                      "h-full rounded-full transition-all",
+                      cat.percentage > 100 ? "bg-destructive" : cat.percentage > 80 ? "bg-warning" : ""
+                    )}
+                    style={{ 
+                      width: `${Math.min(cat.percentage, 100)}%`,
+                      backgroundColor: cat.percentage <= 80 ? cat.color : undefined,
+                    }}
+                  />
+                </div>
+                <div className="flex justify-between text-xs text-muted-foreground">
+                  <span>{cat.percentage.toFixed(0)}% مستخدم</span>
+                  <span className={cat.remaining < 0 ? "text-destructive" : "text-success"}>
+                    {cat.remaining >= 0 ? `متبقي: ${cat.remaining.toLocaleString()}` : `تجاوز: ${Math.abs(cat.remaining).toLocaleString()}`} ر.س
+                  </span>
+                </div>
+              </div>
+            ))}
           </CardContent>
         </Card>
       )}
 
       {/* Tabs */}
-      <Tabs defaultValue="expenses" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-3 bg-muted/50">
+      <Tabs defaultValue="budgets" className="space-y-4">
+        <TabsList className="grid w-full grid-cols-4 bg-muted/50">
+          <TabsTrigger value="budgets" className="gap-1 text-xs">
+            <Target className="w-4 h-4" />
+            الميزانيات
+          </TabsTrigger>
           <TabsTrigger value="expenses" className="gap-1 text-xs">
             <Receipt className="w-4 h-4" />
             المصروفات
@@ -513,6 +606,140 @@ export default function Finance() {
             الأمنيات
           </TabsTrigger>
         </TabsList>
+
+        {/* Category Budgets Tab */}
+        <TabsContent value="budgets" className="space-y-4">
+          <Dialog open={showCategoryBudgetDialog} onOpenChange={setShowCategoryBudgetDialog}>
+            <DialogTrigger asChild>
+              <Button className="w-full btn-gradient">
+                <Plus className="w-4 h-4 ml-2" />
+                إضافة ميزانية فئة
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="bg-background">
+              <DialogHeader>
+                <DialogTitle>تحديد ميزانية لفئة</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4 pt-4">
+                <Select 
+                  value={categoryBudgetForm.category}
+                  onValueChange={(v) => setCategoryBudgetForm(prev => ({ ...prev, category: v }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-background">
+                    {expenseCategories.map((cat) => (
+                      <SelectItem key={cat.value} value={cat.value}>
+                        {cat.icon} {cat.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Input
+                  type="number"
+                  placeholder="المبلغ المخطط"
+                  value={categoryBudgetForm.planned_amount}
+                  onChange={(e) => setCategoryBudgetForm(prev => ({ ...prev, planned_amount: e.target.value }))}
+                />
+                <p className="text-xs text-muted-foreground">
+                  مثال: ميزانية المواصلات 800 ر.س - ستتابع كم صرفت منها فعلياً
+                </p>
+                <Button onClick={saveCategoryBudget} className="w-full btn-gradient">
+                  حفظ الميزانية
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+
+          {categoryComparison.filter(c => c.plannedAmount > 0 || c.actualAmount > 0).length === 0 ? (
+            <Card className="glass-card">
+              <CardContent className="p-6 text-center">
+                <Target className="w-12 h-12 text-muted-foreground mx-auto mb-3 opacity-50" />
+                <p className="text-muted-foreground">لم تحدد ميزانيات للفئات بعد</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  حدد ميزانية لكل فئة لتتابع المخطط vs الفعلي
+                </p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="space-y-3">
+              {categoryComparison
+                .filter(c => c.plannedAmount > 0 || c.actualAmount > 0)
+                .sort((a, b) => b.plannedAmount - a.plannedAmount)
+                .map((cat) => (
+                <Card key={cat.value} className="glass-card">
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-3">
+                        <span className="text-2xl">{cat.icon}</span>
+                        <div>
+                          <p className="font-medium">{cat.label}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {cat.count} عملية
+                          </p>
+                        </div>
+                      </div>
+                      {cat.budgetId && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => deleteCategoryBudget(cat.budgetId!)}
+                          className="text-muted-foreground hover:text-destructive"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      )}
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-4 mb-3">
+                      <div className="text-center p-2 rounded-lg bg-muted/50">
+                        <p className="text-xs text-muted-foreground mb-1">المخطط</p>
+                        <p className="font-bold text-primary">
+                          {cat.plannedAmount > 0 ? `${cat.plannedAmount.toLocaleString()} ر.س` : '-'}
+                        </p>
+                      </div>
+                      <div className="text-center p-2 rounded-lg bg-muted/50">
+                        <p className="text-xs text-muted-foreground mb-1">الفعلي</p>
+                        <p className={cn(
+                          "font-bold",
+                          cat.plannedAmount > 0 && cat.actualAmount > cat.plannedAmount ? "text-destructive" : "text-foreground"
+                        )}>
+                          {cat.actualAmount.toLocaleString()} ر.س
+                        </p>
+                      </div>
+                    </div>
+
+                    {cat.plannedAmount > 0 && (
+                      <>
+                        <div className="h-2 bg-muted rounded-full overflow-hidden">
+                          <div 
+                            className={cn(
+                              "h-full rounded-full transition-all",
+                              cat.percentage > 100 ? "bg-destructive" : cat.percentage > 80 ? "bg-warning" : ""
+                            )}
+                            style={{ 
+                              width: `${Math.min(cat.percentage, 100)}%`,
+                              backgroundColor: cat.percentage <= 80 ? cat.color : undefined,
+                            }}
+                          />
+                        </div>
+                        <div className="flex justify-between mt-2 text-xs">
+                          <Badge variant={cat.percentage > 100 ? "destructive" : cat.percentage > 80 ? "secondary" : "outline"}>
+                            {cat.percentage.toFixed(0)}%
+                          </Badge>
+                          <span className={cat.remaining < 0 ? "text-destructive" : "text-success"}>
+                            {cat.remaining >= 0 ? `متبقي: ${cat.remaining.toLocaleString()}` : `تجاوز: ${Math.abs(cat.remaining).toLocaleString()}`} ر.س
+                          </span>
+                        </div>
+                      </>
+                    )}
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </TabsContent>
 
         {/* Expenses Tab */}
         <TabsContent value="expenses" className="space-y-4">
