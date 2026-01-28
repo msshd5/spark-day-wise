@@ -34,11 +34,14 @@ import {
   Edit2,
   Repeat,
   Target,
+  PieChart as PieChartIcon,
 } from 'lucide-react';
 import { format, startOfMonth } from 'date-fns';
 import { ar } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { ExpensePieChart } from '@/components/finance/ExpensePieChart';
+import { CategoryBudgetEditDialog } from '@/components/finance/CategoryBudgetEditDialog';
 
 interface Budget {
   id: string;
@@ -123,7 +126,13 @@ export default function Finance() {
   const [showWishlistDialog, setShowWishlistDialog] = useState(false);
   const [showRecurringDialog, setShowRecurringDialog] = useState(false);
   const [showCategoryBudgetDialog, setShowCategoryBudgetDialog] = useState(false);
-  
+  const [editingCategory, setEditingCategory] = useState<{
+    value: string;
+    label: string;
+    icon: string;
+    budgetId?: string;
+    plannedAmount: number;
+  } | null>(null);
   const [expenseForm, setExpenseForm] = useState({
     title: '',
     amount: '',
@@ -284,6 +293,33 @@ export default function Finance() {
     toast.success('تم حفظ ميزانية الفئة');
     setShowCategoryBudgetDialog(false);
     setCategoryBudgetForm({ category: 'transport', planned_amount: '' });
+    fetchCategoryBudgets();
+  };
+
+  const updateCategoryBudget = async (categoryValue: string, amount: number, budgetId?: string) => {
+    if (amount === 0 && budgetId) {
+      // إذا كان المبلغ 0 وهناك ميزانية موجودة، نحذفها
+      await supabase.from('category_budgets').delete().eq('id', budgetId);
+      toast.success('تم حذف ميزانية الفئة');
+    } else if (budgetId) {
+      // تحديث الميزانية الموجودة
+      await supabase
+        .from('category_budgets')
+        .update({ planned_amount: amount })
+        .eq('id', budgetId);
+      toast.success('تم تحديث ميزانية الفئة');
+    } else if (amount > 0) {
+      // إضافة ميزانية جديدة
+      await supabase
+        .from('category_budgets')
+        .insert({
+          user_id: user!.id,
+          month: currentMonth,
+          category: categoryValue,
+          planned_amount: amount,
+        });
+      toast.success('تم إضافة ميزانية الفئة');
+    }
     fetchCategoryBudgets();
   };
 
@@ -535,6 +571,28 @@ export default function Finance() {
         </CardContent>
       </Card>
 
+      {/* رسم بياني دائري للمصروفات */}
+      {categoriesWithSpending.length > 0 && (
+        <Card className="glass-card mb-6">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base flex items-center gap-2">
+              <PieChartIcon className="w-5 h-5 text-primary" />
+              توزيع المصروفات
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ExpensePieChart 
+              data={categoriesWithSpending.map(cat => ({
+                name: cat.label,
+                value: cat.actualAmount,
+                color: cat.color,
+                icon: cat.icon,
+              }))}
+            />
+          </CardContent>
+        </Card>
+      )}
+
       {/* مقارنة المخطط vs الفعلي */}
       {categoriesWithBudget.length > 0 && (
         <Card className="glass-card mb-6">
@@ -680,16 +738,32 @@ export default function Finance() {
                           </p>
                         </div>
                       </div>
-                      {cat.budgetId && (
+                      <div className="flex items-center gap-1">
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => deleteCategoryBudget(cat.budgetId!)}
-                          className="text-muted-foreground hover:text-destructive"
+                          onClick={() => setEditingCategory({
+                            value: cat.value,
+                            label: cat.label,
+                            icon: cat.icon,
+                            budgetId: cat.budgetId,
+                            plannedAmount: cat.plannedAmount,
+                          })}
+                          className="text-muted-foreground hover:text-primary"
                         >
-                          <Trash2 className="w-4 h-4" />
+                          <Edit2 className="w-4 h-4" />
                         </Button>
-                      )}
+                        {cat.budgetId && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => deleteCategoryBudget(cat.budgetId!)}
+                            className="text-muted-foreground hover:text-destructive"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        )}
+                      </div>
                     </div>
                     
                     <div className="grid grid-cols-2 gap-4 mb-3">
@@ -1092,6 +1166,16 @@ export default function Finance() {
           )}
         </TabsContent>
       </Tabs>
+
+      {/* Dialog لتعديل ميزانية الفئة */}
+      {editingCategory && (
+        <CategoryBudgetEditDialog
+          open={!!editingCategory}
+          onOpenChange={(open) => !open && setEditingCategory(null)}
+          category={editingCategory}
+          onSave={updateCategoryBudget}
+        />
+      )}
     </div>
   );
 }

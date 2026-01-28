@@ -20,7 +20,6 @@ import {
   Settings,
   Sparkles,
   Target,
-  TrendingUp,
   FileText,
   Heart,
 } from 'lucide-react';
@@ -130,9 +129,9 @@ export default function Dashboard() {
         <div className="absolute inset-0 bg-gradient-to-br from-primary/10 to-accent/10" />
         <CardContent className="relative p-4">
           <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2">
               <div className="p-2 rounded-xl bg-primary/20">
-                <TrendingUp className="w-5 h-5 text-primary" />
+                <Target className="w-5 h-5 text-primary" />
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">معدل الإنجاز</p>
@@ -197,62 +196,6 @@ export default function Dashboard() {
       <section className="mb-6 animate-fade-in">
         <h2 className="text-lg font-bold mb-4">إجراءات سريعة</h2>
         <div className="grid grid-cols-2 gap-3">
-          <Link to="/tasks">
-            <Card className="glass-card hover:border-primary/50 transition-all cursor-pointer">
-              <CardContent className="p-4 flex items-center gap-3">
-                <div className="p-3 rounded-xl bg-primary/20">
-                  <Plus className="w-6 h-6 text-primary" />
-                </div>
-                <div>
-                  <p className="font-medium">مهمة جديدة</p>
-                  <p className="text-xs text-muted-foreground">إضافة سريعة</p>
-                </div>
-              </CardContent>
-            </Card>
-          </Link>
-
-          <Link to="/assistant">
-            <Card className="glass-card hover:border-accent/50 transition-all cursor-pointer">
-              <CardContent className="p-4 flex items-center gap-3">
-                <div className="p-3 rounded-xl bg-accent/20">
-                  <Sparkles className="w-6 h-6 text-accent" />
-                </div>
-                <div>
-                  <p className="font-medium">المساعد</p>
-                  <p className="text-xs text-muted-foreground">رتّب يومك</p>
-                </div>
-              </CardContent>
-            </Card>
-          </Link>
-
-          <Link to="/planner">
-            <Card className="glass-card hover:border-success/50 transition-all cursor-pointer">
-              <CardContent className="p-4 flex items-center gap-3">
-                <div className="p-3 rounded-xl bg-success/20">
-                  <Calendar className="w-6 h-6 text-success" />
-                </div>
-                <div>
-                  <p className="font-medium">التقويم</p>
-                  <p className="text-xs text-muted-foreground">عرض الخطة</p>
-                </div>
-              </CardContent>
-            </Card>
-          </Link>
-
-          <Link to="/review">
-            <Card className="glass-card hover:border-warning/50 transition-all cursor-pointer">
-              <CardContent className="p-4 flex items-center gap-3">
-                <div className="p-3 rounded-xl bg-warning/20">
-                  <CheckCircle2 className="w-6 h-6 text-warning" />
-                </div>
-                <div>
-                  <p className="font-medium">المراجعة</p>
-                  <p className="text-xs text-muted-foreground">تقييم اليوم</p>
-                </div>
-              </CardContent>
-            </Card>
-          </Link>
-
           <Link to="/content">
             <Card className="glass-card hover:border-blue-500/50 transition-all cursor-pointer">
               <CardContent className="p-4 flex items-center gap-3">
@@ -281,15 +224,29 @@ export default function Dashboard() {
             </Card>
           </Link>
 
-          <Link to="/finance">
-            <Card className="glass-card hover:border-emerald-500/50 transition-all cursor-pointer">
+          <Link to="/review">
+            <Card className="glass-card hover:border-warning/50 transition-all cursor-pointer">
               <CardContent className="p-4 flex items-center gap-3">
-                <div className="p-3 rounded-xl bg-emerald-500/20">
-                  <TrendingUp className="w-6 h-6 text-emerald-500" />
+                <div className="p-3 rounded-xl bg-warning/20">
+                  <CheckCircle2 className="w-6 h-6 text-warning" />
                 </div>
                 <div>
-                  <p className="font-medium">المالية</p>
-                  <p className="text-xs text-muted-foreground">الميزانية والمصروفات</p>
+                  <p className="font-medium">المراجعة</p>
+                  <p className="text-xs text-muted-foreground">تقييم اليوم</p>
+                </div>
+              </CardContent>
+            </Card>
+          </Link>
+
+          <Link to="/projects">
+            <Card className="glass-card hover:border-purple-500/50 transition-all cursor-pointer">
+              <CardContent className="p-4 flex items-center gap-3">
+                <div className="p-3 rounded-xl bg-purple-500/20">
+                  <Target className="w-6 h-6 text-purple-500" />
+                </div>
+                <div>
+                  <p className="font-medium">المشاريع</p>
+                  <p className="text-xs text-muted-foreground">إدارة المشاريع</p>
                 </div>
               </CardContent>
             </Card>
