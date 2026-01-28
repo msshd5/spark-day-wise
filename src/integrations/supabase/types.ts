@@ -343,6 +343,48 @@ export type Database = {
         }
         Relationships: []
       }
+      recurring_expenses: {
+        Row: {
+          amount: number
+          category: string
+          created_at: string
+          day_of_month: number | null
+          frequency: string
+          id: string
+          is_active: boolean | null
+          notes: string | null
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          category?: string
+          created_at?: string
+          day_of_month?: number | null
+          frequency?: string
+          id?: string
+          is_active?: boolean | null
+          notes?: string | null
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          category?: string
+          created_at?: string
+          day_of_month?: number | null
+          frequency?: string
+          id?: string
+          is_active?: boolean | null
+          notes?: string | null
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       tasks: {
         Row: {
           category: string | null
