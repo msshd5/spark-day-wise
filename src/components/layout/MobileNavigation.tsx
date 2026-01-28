@@ -2,7 +2,7 @@ import { NavLink } from 'react-router-dom';
 import { 
   LayoutDashboard, 
   CheckSquare, 
-  FolderKanban, 
+  Wallet, 
   Calendar,
   Sparkles,
 } from 'lucide-react';
@@ -12,7 +12,7 @@ const navItems = [
   { to: '/dashboard', icon: LayoutDashboard, label: 'الرئيسية' },
   { to: '/tasks', icon: CheckSquare, label: 'المهام' },
   { to: '/planner', icon: Calendar, label: 'التقويم' },
-  { to: '/projects', icon: FolderKanban, label: 'المشاريع' },
+  { to: '/finance', icon: Wallet, label: 'المالية' },
   { to: '/assistant', icon: Sparkles, label: 'المساعد' },
 ];
 
