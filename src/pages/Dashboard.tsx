@@ -280,6 +280,20 @@ export default function Dashboard() {
               </CardContent>
             </Card>
           </Link>
+
+          <Link to="/finance">
+            <Card className="glass-card hover:border-emerald-500/50 transition-all cursor-pointer">
+              <CardContent className="p-4 flex items-center gap-3">
+                <div className="p-3 rounded-xl bg-emerald-500/20">
+                  <TrendingUp className="w-6 h-6 text-emerald-500" />
+                </div>
+                <div>
+                  <p className="font-medium">المالية</p>
+                  <p className="text-xs text-muted-foreground">الميزانية والمصروفات</p>
+                </div>
+              </CardContent>
+            </Card>
+          </Link>
         </div>
       </section>
 

@@ -19,6 +19,7 @@ import Settings from "./pages/Settings";
 import Review from "./pages/Review";
 import ContentHub from "./pages/ContentHub";
 import Health from "./pages/Health";
+import Finance from "./pages/Finance";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -54,6 +55,7 @@ const App = () => (
               <Route path="/review" element={<Review />} />
               <Route path="/content" element={<ContentHub />} />
               <Route path="/health" element={<Health />} />
+              <Route path="/finance" element={<Finance />} />
             </Route>
             
             {/* صفحة 404 */}
