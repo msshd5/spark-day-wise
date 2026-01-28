@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Switch } from '@/components/ui/switch';
 import { 
   Select,
   SelectContent,
@@ -28,10 +29,12 @@ import {
   ShoppingCart, 
   Trash2,
   Check,
-  ArrowRight,
   Receipt,
   Star,
   Edit2,
+  Repeat,
+  PieChart,
+  BarChart3,
 } from 'lucide-react';
 import { format, startOfMonth } from 'date-fns';
 import { ar } from 'date-fns/locale';
@@ -62,15 +65,28 @@ interface WishlistItem {
   notes?: string;
 }
 
+interface RecurringExpense {
+  id: string;
+  title: string;
+  amount: number;
+  category: string;
+  frequency: string;
+  day_of_month: number;
+  is_active: boolean;
+  notes?: string;
+}
+
 const expenseCategories = [
-  { value: 'food', label: 'طعام', icon: '🍔' },
-  { value: 'transport', label: 'مواصلات', icon: '🚗' },
-  { value: 'shopping', label: 'تسوق', icon: '🛍️' },
-  { value: 'bills', label: 'فواتير', icon: '📄' },
-  { value: 'entertainment', label: 'ترفيه', icon: '🎮' },
-  { value: 'health', label: 'صحة', icon: '💊' },
-  { value: 'education', label: 'تعليم', icon: '📚' },
-  { value: 'other', label: 'أخرى', icon: '📦' },
+  { value: 'food', label: 'طعام', icon: '🍔', color: '#f97316' },
+  { value: 'transport', label: 'مواصلات', icon: '🚗', color: '#3b82f6' },
+  { value: 'shopping', label: 'تسوق', icon: '🛍️', color: '#ec4899' },
+  { value: 'bills', label: 'فواتير', icon: '📄', color: '#eab308' },
+  { value: 'entertainment', label: 'ترفيه', icon: '🎮', color: '#8b5cf6' },
+  { value: 'health', label: 'صحة', icon: '💊', color: '#10b981' },
+  { value: 'education', label: 'تعليم', icon: '📚', color: '#06b6d4' },
+  { value: 'rent', label: 'إيجار', icon: '🏠', color: '#64748b' },
+  { value: 'subscriptions', label: 'اشتراكات', icon: '📱', color: '#a855f7' },
+  { value: 'other', label: 'أخرى', icon: '📦', color: '#6b7280' },
 ];
 
 const priorityLabels: Record<string, { label: string; color: string }> = {
@@ -79,11 +95,18 @@ const priorityLabels: Record<string, { label: string; color: string }> = {
   low: { label: 'منخفضة', color: 'bg-muted text-muted-foreground' },
 };
 
+const frequencyLabels: Record<string, string> = {
+  monthly: 'شهرياً',
+  weekly: 'أسبوعياً',
+  yearly: 'سنوياً',
+};
+
 export default function Finance() {
   const { user } = useAuth();
   const [budget, setBudget] = useState<Budget | null>(null);
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [wishlist, setWishlist] = useState<WishlistItem[]>([]);
+  const [recurringExpenses, setRecurringExpenses] = useState<RecurringExpense[]>([]);
   const [loading, setLoading] = useState(true);
   
   // Form states
@@ -91,6 +114,7 @@ export default function Finance() {
   const [showBudgetDialog, setShowBudgetDialog] = useState(false);
   const [showExpenseDialog, setShowExpenseDialog] = useState(false);
   const [showWishlistDialog, setShowWishlistDialog] = useState(false);
+  const [showRecurringDialog, setShowRecurringDialog] = useState(false);
   
   const [expenseForm, setExpenseForm] = useState({
     title: '',
@@ -103,6 +127,15 @@ export default function Finance() {
     title: '',
     estimated_price: '',
     priority: 'medium',
+    notes: '',
+  });
+
+  const [recurringForm, setRecurringForm] = useState({
+    title: '',
+    amount: '',
+    category: 'bills',
+    frequency: 'monthly',
+    day_of_month: '1',
     notes: '',
   });
 
@@ -120,6 +153,7 @@ export default function Finance() {
       fetchBudget(),
       fetchExpenses(),
       fetchWishlist(),
+      fetchRecurringExpenses(),
     ]);
     setLoading(false);
   };
@@ -130,7 +164,7 @@ export default function Finance() {
       .select('*')
       .eq('user_id', user!.id)
       .eq('month', currentMonth)
-      .single();
+      .maybeSingle();
     
     setBudget(data);
   };
@@ -156,6 +190,16 @@ export default function Finance() {
       .order('created_at', { ascending: false });
     
     setWishlist(data || []);
+  };
+
+  const fetchRecurringExpenses = async () => {
+    const { data } = await supabase
+      .from('recurring_expenses')
+      .select('*')
+      .eq('user_id', user!.id)
+      .order('created_at', { ascending: false });
+    
+    setRecurringExpenses(data || []);
   };
 
   const saveBudget = async () => {
@@ -255,9 +299,66 @@ export default function Finance() {
     fetchWishlist();
   };
 
+  const addRecurringExpense = async () => {
+    const amount = parseFloat(recurringForm.amount);
+    if (!recurringForm.title.trim() || isNaN(amount) || amount <= 0) {
+      toast.error('أكمل البيانات المطلوبة');
+      return;
+    }
+
+    await supabase
+      .from('recurring_expenses')
+      .insert({
+        user_id: user!.id,
+        title: recurringForm.title,
+        amount: amount,
+        category: recurringForm.category,
+        frequency: recurringForm.frequency,
+        day_of_month: parseInt(recurringForm.day_of_month),
+        notes: recurringForm.notes || null,
+      });
+
+    toast.success('تمت إضافة المصروف المتكرر');
+    setShowRecurringDialog(false);
+    setRecurringForm({ title: '', amount: '', category: 'bills', frequency: 'monthly', day_of_month: '1', notes: '' });
+    fetchRecurringExpenses();
+  };
+
+  const toggleRecurringActive = async (item: RecurringExpense) => {
+    await supabase
+      .from('recurring_expenses')
+      .update({ is_active: !item.is_active })
+      .eq('id', item.id);
+
+    fetchRecurringExpenses();
+  };
+
+  const deleteRecurringExpense = async (id: string) => {
+    await supabase.from('recurring_expenses').delete().eq('id', id);
+    toast.success('تم الحذف');
+    fetchRecurringExpenses();
+  };
+
+  // حسابات الإحصائيات
   const totalExpenses = expenses.reduce((sum, exp) => sum + Number(exp.amount), 0);
-  const remainingBudget = budget ? Number(budget.total_budget) - totalExpenses : 0;
-  const spentPercentage = budget ? (totalExpenses / Number(budget.total_budget)) * 100 : 0;
+  const totalRecurring = recurringExpenses
+    .filter(r => r.is_active)
+    .reduce((sum, exp) => sum + Number(exp.amount), 0);
+  const remainingBudget = budget ? Number(budget.total_budget) - totalExpenses - totalRecurring : 0;
+  const spentPercentage = budget ? ((totalExpenses + totalRecurring) / Number(budget.total_budget)) * 100 : 0;
+
+  // إحصائيات حسب التصنيف
+  const expensesByCategory = expenseCategories.map(cat => {
+    const catExpenses = expenses.filter(e => e.category === cat.value);
+    const catRecurring = recurringExpenses.filter(e => e.category === cat.value && e.is_active);
+    const total = catExpenses.reduce((sum, e) => sum + Number(e.amount), 0) +
+                  catRecurring.reduce((sum, e) => sum + Number(e.amount), 0);
+    return {
+      ...cat,
+      total,
+      count: catExpenses.length + catRecurring.length,
+    };
+  }).filter(cat => cat.total > 0).sort((a, b) => b.total - a.total);
 
   const getCategoryIcon = (category: string) => {
     return expenseCategories.find(c => c.value === category)?.icon || '📦';
@@ -265,6 +366,10 @@ export default function Finance() {
 
   const getCategoryLabel = (category: string) => {
     return expenseCategories.find(c => c.value === category)?.label || 'أخرى';
+  };
+
+  const getCategoryColor = (category: string) => {
+    return expenseCategories.find(c => c.value === category)?.color || '#6b7280';
   };
 
   return (
@@ -337,7 +442,7 @@ export default function Finance() {
                     "font-bold",
                     spentPercentage > 90 ? "text-destructive" : "text-foreground"
                   )}>
-                    {totalExpenses.toLocaleString()} ر.س
+                    {(totalExpenses + totalRecurring).toLocaleString()} ر.س
                   </span>
                 </div>
                 <div>
@@ -355,16 +460,57 @@ export default function Finance() {
         </CardContent>
       </Card>
 
+      {/* إحصائيات حسب التصنيف */}
+      {expensesByCategory.length > 0 && (
+        <Card className="glass-card mb-6">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base flex items-center gap-2">
+              <BarChart3 className="w-5 h-5 text-primary" />
+              توزيع المصروفات
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {expensesByCategory.slice(0, 5).map((cat) => {
+              const percentage = budget ? (cat.total / Number(budget.total_budget)) * 100 : 0;
+              return (
+                <div key={cat.value} className="space-y-1">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="flex items-center gap-2">
+                      <span>{cat.icon}</span>
+                      <span>{cat.label}</span>
+                    </span>
+                    <span className="font-bold">{cat.total.toLocaleString()} ر.س</span>
+                  </div>
+                  <div className="h-2 bg-muted rounded-full overflow-hidden">
+                    <div 
+                      className="h-full rounded-full transition-all"
+                      style={{ 
+                        width: `${Math.min(percentage, 100)}%`,
+                        backgroundColor: cat.color,
+                      }}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+          </CardContent>
+        </Card>
+      )}
+
       {/* Tabs */}
       <Tabs defaultValue="expenses" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-2 bg-muted/50">
-          <TabsTrigger value="expenses" className="gap-2">
+        <TabsList className="grid w-full grid-cols-3 bg-muted/50">
+          <TabsTrigger value="expenses" className="gap-1 text-xs">
             <Receipt className="w-4 h-4" />
             المصروفات
           </TabsTrigger>
-          <TabsTrigger value="wishlist" className="gap-2">
+          <TabsTrigger value="recurring" className="gap-1 text-xs">
+            <Repeat className="w-4 h-4" />
+            المتكررة
+          </TabsTrigger>
+          <TabsTrigger value="wishlist" className="gap-1 text-xs">
             <Star className="w-4 h-4" />
-            قائمة الأمنيات
+            الأمنيات
           </TabsTrigger>
         </TabsList>
 
@@ -450,6 +596,144 @@ export default function Finance() {
                           variant="ghost"
                           size="icon"
                           onClick={() => deleteExpense(expense.id)}
+                          className="text-muted-foreground hover:text-destructive"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </TabsContent>
+
+        {/* Recurring Expenses Tab */}
+        <TabsContent value="recurring" className="space-y-4">
+          <div className="flex items-center justify-between mb-2">
+            <div className="text-sm text-muted-foreground">
+              إجمالي شهري: <span className="font-bold text-foreground">{totalRecurring.toLocaleString()} ر.س</span>
+            </div>
+          </div>
+
+          <Dialog open={showRecurringDialog} onOpenChange={setShowRecurringDialog}>
+            <DialogTrigger asChild>
+              <Button className="w-full btn-gradient">
+                <Plus className="w-4 h-4 ml-2" />
+                إضافة مصروف متكرر
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="bg-background">
+              <DialogHeader>
+                <DialogTitle>إضافة مصروف متكرر</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4 pt-4">
+                <Input
+                  placeholder="الوصف (مثل: إيجار الشقة)"
+                  value={recurringForm.title}
+                  onChange={(e) => setRecurringForm(prev => ({ ...prev, title: e.target.value }))}
+                />
+                <Input
+                  type="number"
+                  placeholder="المبلغ"
+                  value={recurringForm.amount}
+                  onChange={(e) => setRecurringForm(prev => ({ ...prev, amount: e.target.value }))}
+                />
+                <Select 
+                  value={recurringForm.category}
+                  onValueChange={(v) => setRecurringForm(prev => ({ ...prev, category: v }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-background">
+                    {expenseCategories.map((cat) => (
+                      <SelectItem key={cat.value} value={cat.value}>
+                        {cat.icon} {cat.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Select 
+                  value={recurringForm.frequency}
+                  onValueChange={(v) => setRecurringForm(prev => ({ ...prev, frequency: v }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-background">
+                    <SelectItem value="monthly">شهرياً</SelectItem>
+                    <SelectItem value="weekly">أسبوعياً</SelectItem>
+                    <SelectItem value="yearly">سنوياً</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Input
+                  type="number"
+                  placeholder="يوم الشهر (1-28)"
+                  min="1"
+                  max="28"
+                  value={recurringForm.day_of_month}
+                  onChange={(e) => setRecurringForm(prev => ({ ...prev, day_of_month: e.target.value }))}
+                />
+                <Input
+                  placeholder="ملاحظات (اختياري)"
+                  value={recurringForm.notes}
+                  onChange={(e) => setRecurringForm(prev => ({ ...prev, notes: e.target.value }))}
+                />
+                <Button onClick={addRecurringExpense} className="w-full btn-gradient">
+                  إضافة المصروف المتكرر
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+
+          {recurringExpenses.length === 0 ? (
+            <Card className="glass-card">
+              <CardContent className="p-6 text-center">
+                <Repeat className="w-12 h-12 text-muted-foreground mx-auto mb-3 opacity-50" />
+                <p className="text-muted-foreground">لا توجد مصروفات متكررة</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  أضف الإيجار، الاشتراكات، والفواتير الثابتة
+                </p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="space-y-3">
+              {recurringExpenses.map((item) => (
+                <Card 
+                  key={item.id} 
+                  className={cn(
+                    "glass-card transition-all",
+                    !item.is_active && "opacity-50"
+                  )}
+                >
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <span className="text-2xl">{getCategoryIcon(item.category)}</span>
+                        <div>
+                          <p className="font-medium">{item.title}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {getCategoryLabel(item.category)} • {frequencyLabels[item.frequency]} • يوم {item.day_of_month}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <span className={cn(
+                          "font-bold",
+                          item.is_active ? "text-warning" : "text-muted-foreground"
+                        )}>
+                          {Number(item.amount).toLocaleString()} ر.س
+                        </span>
+                        <Switch
+                          checked={item.is_active}
+                          onCheckedChange={() => toggleRecurringActive(item)}
+                        />
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => deleteRecurringExpense(item.id)}
                           className="text-muted-foreground hover:text-destructive"
                         >
                           <Trash2 className="w-4 h-4" />
