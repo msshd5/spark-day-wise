@@ -1,0 +1,586 @@
+import { useState, useEffect } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { 
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { 
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import { 
+  Wallet, 
+  Plus, 
+  TrendingDown, 
+  ShoppingCart, 
+  Trash2,
+  Check,
+  ArrowRight,
+  Receipt,
+  Star,
+  Edit2,
+} from 'lucide-react';
+import { format, startOfMonth } from 'date-fns';
+import { ar } from 'date-fns/locale';
+import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
+
+interface Budget {
+  id: string;
+  month: string;
+  total_budget: number;
+}
+
+interface Expense {
+  id: string;
+  title: string;
+  amount: number;
+  category: string;
+  expense_date: string;
+  notes?: string;
+}
+
+interface WishlistItem {
+  id: string;
+  title: string;
+  estimated_price?: number;
+  priority: string;
+  is_purchased: boolean;
+  notes?: string;
+}
+
+const expenseCategories = [
+  { value: 'food', label: 'طعام', icon: '🍔' },
+  { value: 'transport', label: 'مواصلات', icon: '🚗' },
+  { value: 'shopping', label: 'تسوق', icon: '🛍️' },
+  { value: 'bills', label: 'فواتير', icon: '📄' },
+  { value: 'entertainment', label: 'ترفيه', icon: '🎮' },
+  { value: 'health', label: 'صحة', icon: '💊' },
+  { value: 'education', label: 'تعليم', icon: '📚' },
+  { value: 'other', label: 'أخرى', icon: '📦' },
+];
+
+const priorityLabels: Record<string, { label: string; color: string }> = {
+  high: { label: 'عالية', color: 'bg-destructive text-destructive-foreground' },
+  medium: { label: 'متوسطة', color: 'bg-warning text-warning-foreground' },
+  low: { label: 'منخفضة', color: 'bg-muted text-muted-foreground' },
+};
+
+export default function Finance() {
+  const { user } = useAuth();
+  const [budget, setBudget] = useState<Budget | null>(null);
+  const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [wishlist, setWishlist] = useState<WishlistItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  
+  // Form states
+  const [newBudget, setNewBudget] = useState('');
+  const [showBudgetDialog, setShowBudgetDialog] = useState(false);
+  const [showExpenseDialog, setShowExpenseDialog] = useState(false);
+  const [showWishlistDialog, setShowWishlistDialog] = useState(false);
+  
+  const [expenseForm, setExpenseForm] = useState({
+    title: '',
+    amount: '',
+    category: 'other',
+    notes: '',
+  });
+  
+  const [wishlistForm, setWishlistForm] = useState({
+    title: '',
+    estimated_price: '',
+    priority: 'medium',
+    notes: '',
+  });
+
+  const currentMonth = startOfMonth(new Date()).toISOString().split('T')[0];
+
+  useEffect(() => {
+    if (user) {
+      fetchData();
+    }
+  }, [user]);
+
+  const fetchData = async () => {
+    setLoading(true);
+    await Promise.all([
+      fetchBudget(),
+      fetchExpenses(),
+      fetchWishlist(),
+    ]);
+    setLoading(false);
+  };
+
+  const fetchBudget = async () => {
+    const { data } = await supabase
+      .from('budgets')
+      .select('*')
+      .eq('user_id', user!.id)
+      .eq('month', currentMonth)
+      .single();
+    
+    setBudget(data);
+  };
+
+  const fetchExpenses = async () => {
+    const startOfCurrentMonth = startOfMonth(new Date()).toISOString().split('T')[0];
+    const { data } = await supabase
+      .from('expenses')
+      .select('*')
+      .eq('user_id', user!.id)
+      .gte('expense_date', startOfCurrentMonth)
+      .order('expense_date', { ascending: false });
+    
+    setExpenses(data || []);
+  };
+
+  const fetchWishlist = async () => {
+    const { data } = await supabase
+      .from('wishlist')
+      .select('*')
+      .eq('user_id', user!.id)
+      .order('priority', { ascending: true })
+      .order('created_at', { ascending: false });
+    
+    setWishlist(data || []);
+  };
+
+  const saveBudget = async () => {
+    const amount = parseFloat(newBudget);
+    if (isNaN(amount) || amount <= 0) {
+      toast.error('أدخل مبلغ صحيح');
+      return;
+    }
+
+    if (budget) {
+      await supabase
+        .from('budgets')
+        .update({ total_budget: amount })
+        .eq('id', budget.id);
+    } else {
+      await supabase
+        .from('budgets')
+        .insert({
+          user_id: user!.id,
+          month: currentMonth,
+          total_budget: amount,
+        });
+    }
+
+    toast.success('تم حفظ الميزانية');
+    setShowBudgetDialog(false);
+    setNewBudget('');
+    fetchBudget();
+  };
+
+  const addExpense = async () => {
+    const amount = parseFloat(expenseForm.amount);
+    if (!expenseForm.title.trim() || isNaN(amount) || amount <= 0) {
+      toast.error('أكمل البيانات المطلوبة');
+      return;
+    }
+
+    await supabase
+      .from('expenses')
+      .insert({
+        user_id: user!.id,
+        title: expenseForm.title,
+        amount: amount,
+        category: expenseForm.category,
+        notes: expenseForm.notes || null,
+      });
+
+    toast.success('تمت إضافة المصروف');
+    setShowExpenseDialog(false);
+    setExpenseForm({ title: '', amount: '', category: 'other', notes: '' });
+    fetchExpenses();
+  };
+
+  const deleteExpense = async (id: string) => {
+    await supabase.from('expenses').delete().eq('id', id);
+    toast.success('تم الحذف');
+    fetchExpenses();
+  };
+
+  const addWishlistItem = async () => {
+    if (!wishlistForm.title.trim()) {
+      toast.error('أدخل اسم العنصر');
+      return;
+    }
+
+    await supabase
+      .from('wishlist')
+      .insert({
+        user_id: user!.id,
+        title: wishlistForm.title,
+        estimated_price: wishlistForm.estimated_price ? parseFloat(wishlistForm.estimated_price) : null,
+        priority: wishlistForm.priority,
+        notes: wishlistForm.notes || null,
+      });
+
+    toast.success('تمت الإضافة للقائمة');
+    setShowWishlistDialog(false);
+    setWishlistForm({ title: '', estimated_price: '', priority: 'medium', notes: '' });
+    fetchWishlist();
+  };
+
+  const toggleWishlistPurchased = async (item: WishlistItem) => {
+    await supabase
+      .from('wishlist')
+      .update({ 
+        is_purchased: !item.is_purchased,
+        purchased_at: !item.is_purchased ? new Date().toISOString() : null,
+      })
+      .eq('id', item.id);
+
+    fetchWishlist();
+  };
+
+  const deleteWishlistItem = async (id: string) => {
+    await supabase.from('wishlist').delete().eq('id', id);
+    toast.success('تم الحذف');
+    fetchWishlist();
+  };
+
+  const totalExpenses = expenses.reduce((sum, exp) => sum + Number(exp.amount), 0);
+  const remainingBudget = budget ? Number(budget.total_budget) - totalExpenses : 0;
+  const spentPercentage = budget ? (totalExpenses / Number(budget.total_budget)) * 100 : 0;
+
+  const getCategoryIcon = (category: string) => {
+    return expenseCategories.find(c => c.value === category)?.icon || '📦';
+  };
+
+  const getCategoryLabel = (category: string) => {
+    return expenseCategories.find(c => c.value === category)?.label || 'أخرى';
+  };
+
+  return (
+    <div className="min-h-screen p-4 pb-24">
+      {/* Header */}
+      <header className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="text-2xl font-bold">الأمور المالية 💰</h1>
+          <p className="text-muted-foreground text-sm">
+            {format(new Date(), 'MMMM yyyy', { locale: ar })}
+          </p>
+        </div>
+      </header>
+
+      {/* Budget Overview Card */}
+      <Card className="glass-card mb-6 overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/10 to-accent/10" />
+        <CardContent className="relative p-4">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <div className="p-2 rounded-xl bg-primary/20">
+                <Wallet className="w-5 h-5 text-primary" />
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">الميزانية الشهرية</p>
+                <p className="text-2xl font-bold">
+                  {budget ? `${Number(budget.total_budget).toLocaleString()} ر.س` : 'غير محددة'}
+                </p>
+              </div>
+            </div>
+            <Dialog open={showBudgetDialog} onOpenChange={setShowBudgetDialog}>
+              <DialogTrigger asChild>
+                <Button variant="outline" size="sm">
+                  <Edit2 className="w-4 h-4 ml-1" />
+                  تعديل
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="bg-background">
+                <DialogHeader>
+                  <DialogTitle>تحديد الميزانية الشهرية</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4 pt-4">
+                  <Input
+                    type="number"
+                    placeholder="المبلغ بالريال"
+                    value={newBudget}
+                    onChange={(e) => setNewBudget(e.target.value)}
+                  />
+                  <Button onClick={saveBudget} className="w-full btn-gradient">
+                    حفظ الميزانية
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
+          </div>
+
+          {budget && (
+            <>
+              <Progress 
+                value={Math.min(spentPercentage, 100)} 
+                className={cn(
+                  "h-3",
+                  spentPercentage > 90 ? "bg-destructive/20" : "bg-muted"
+                )}
+              />
+              <div className="flex justify-between mt-3 text-sm">
+                <div>
+                  <span className="text-muted-foreground">صرفت: </span>
+                  <span className={cn(
+                    "font-bold",
+                    spentPercentage > 90 ? "text-destructive" : "text-foreground"
+                  )}>
+                    {totalExpenses.toLocaleString()} ر.س
+                  </span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">متبقي: </span>
+                  <span className={cn(
+                    "font-bold",
+                    remainingBudget < 0 ? "text-destructive" : "text-success"
+                  )}>
+                    {remainingBudget.toLocaleString()} ر.س
+                  </span>
+                </div>
+              </div>
+            </>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Tabs */}
+      <Tabs defaultValue="expenses" className="space-y-4">
+        <TabsList className="grid w-full grid-cols-2 bg-muted/50">
+          <TabsTrigger value="expenses" className="gap-2">
+            <Receipt className="w-4 h-4" />
+            المصروفات
+          </TabsTrigger>
+          <TabsTrigger value="wishlist" className="gap-2">
+            <Star className="w-4 h-4" />
+            قائمة الأمنيات
+          </TabsTrigger>
+        </TabsList>
+
+        {/* Expenses Tab */}
+        <TabsContent value="expenses" className="space-y-4">
+          <Dialog open={showExpenseDialog} onOpenChange={setShowExpenseDialog}>
+            <DialogTrigger asChild>
+              <Button className="w-full btn-gradient">
+                <Plus className="w-4 h-4 ml-2" />
+                إضافة مصروف
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="bg-background">
+              <DialogHeader>
+                <DialogTitle>إضافة مصروف جديد</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4 pt-4">
+                <Input
+                  placeholder="وصف المصروف"
+                  value={expenseForm.title}
+                  onChange={(e) => setExpenseForm(prev => ({ ...prev, title: e.target.value }))}
+                />
+                <Input
+                  type="number"
+                  placeholder="المبلغ"
+                  value={expenseForm.amount}
+                  onChange={(e) => setExpenseForm(prev => ({ ...prev, amount: e.target.value }))}
+                />
+                <Select 
+                  value={expenseForm.category}
+                  onValueChange={(v) => setExpenseForm(prev => ({ ...prev, category: v }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-background">
+                    {expenseCategories.map((cat) => (
+                      <SelectItem key={cat.value} value={cat.value}>
+                        {cat.icon} {cat.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Input
+                  placeholder="ملاحظات (اختياري)"
+                  value={expenseForm.notes}
+                  onChange={(e) => setExpenseForm(prev => ({ ...prev, notes: e.target.value }))}
+                />
+                <Button onClick={addExpense} className="w-full btn-gradient">
+                  إضافة المصروف
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+
+          {expenses.length === 0 ? (
+            <Card className="glass-card">
+              <CardContent className="p-6 text-center">
+                <TrendingDown className="w-12 h-12 text-muted-foreground mx-auto mb-3 opacity-50" />
+                <p className="text-muted-foreground">لا توجد مصروفات هذا الشهر</p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="space-y-3">
+              {expenses.map((expense) => (
+                <Card key={expense.id} className="glass-card">
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <span className="text-2xl">{getCategoryIcon(expense.category)}</span>
+                        <div>
+                          <p className="font-medium">{expense.title}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {getCategoryLabel(expense.category)} • {format(new Date(expense.expense_date), 'd MMM', { locale: ar })}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-destructive">
+                          -{Number(expense.amount).toLocaleString()} ر.س
+                        </span>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => deleteExpense(expense.id)}
+                          className="text-muted-foreground hover:text-destructive"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </TabsContent>
+
+        {/* Wishlist Tab */}
+        <TabsContent value="wishlist" className="space-y-4">
+          <Dialog open={showWishlistDialog} onOpenChange={setShowWishlistDialog}>
+            <DialogTrigger asChild>
+              <Button className="w-full btn-gradient">
+                <Plus className="w-4 h-4 ml-2" />
+                إضافة للقائمة
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="bg-background">
+              <DialogHeader>
+                <DialogTitle>إضافة عنصر للقائمة</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4 pt-4">
+                <Input
+                  placeholder="اسم العنصر"
+                  value={wishlistForm.title}
+                  onChange={(e) => setWishlistForm(prev => ({ ...prev, title: e.target.value }))}
+                />
+                <Input
+                  type="number"
+                  placeholder="السعر التقريبي (اختياري)"
+                  value={wishlistForm.estimated_price}
+                  onChange={(e) => setWishlistForm(prev => ({ ...prev, estimated_price: e.target.value }))}
+                />
+                <Select 
+                  value={wishlistForm.priority}
+                  onValueChange={(v) => setWishlistForm(prev => ({ ...prev, priority: v }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-background">
+                    <SelectItem value="high">أولوية عالية</SelectItem>
+                    <SelectItem value="medium">أولوية متوسطة</SelectItem>
+                    <SelectItem value="low">أولوية منخفضة</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Input
+                  placeholder="ملاحظات (اختياري)"
+                  value={wishlistForm.notes}
+                  onChange={(e) => setWishlistForm(prev => ({ ...prev, notes: e.target.value }))}
+                />
+                <Button onClick={addWishlistItem} className="w-full btn-gradient">
+                  إضافة للقائمة
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+
+          {wishlist.length === 0 ? (
+            <Card className="glass-card">
+              <CardContent className="p-6 text-center">
+                <ShoppingCart className="w-12 h-12 text-muted-foreground mx-auto mb-3 opacity-50" />
+                <p className="text-muted-foreground">قائمة الأمنيات فارغة</p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="space-y-3">
+              {wishlist.map((item) => (
+                <Card 
+                  key={item.id} 
+                  className={cn(
+                    "glass-card transition-all",
+                    item.is_purchased && "opacity-60"
+                  )}
+                >
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => toggleWishlistPurchased(item)}
+                          className={cn(
+                            "rounded-full border-2",
+                            item.is_purchased 
+                              ? "bg-success text-success-foreground border-success" 
+                              : "border-muted-foreground"
+                          )}
+                        >
+                          {item.is_purchased && <Check className="w-4 h-4" />}
+                        </Button>
+                        <div>
+                          <p className={cn(
+                            "font-medium",
+                            item.is_purchased && "line-through"
+                          )}>
+                            {item.title}
+                          </p>
+                          <div className="flex items-center gap-2 mt-1">
+                            <Badge className={priorityLabels[item.priority]?.color || ''}>
+                              {priorityLabels[item.priority]?.label}
+                            </Badge>
+                            {item.estimated_price && (
+                              <span className="text-xs text-muted-foreground">
+                                ~{Number(item.estimated_price).toLocaleString()} ر.س
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => deleteWishlistItem(item.id)}
+                        className="text-muted-foreground hover:text-destructive"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+}

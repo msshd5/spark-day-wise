@@ -73,6 +73,33 @@ export type Database = {
           },
         ]
       }
+      budgets: {
+        Row: {
+          created_at: string
+          id: string
+          month: string
+          total_budget: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          month: string
+          total_budget?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          month?: string
+          total_budget?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       commitments: {
         Row: {
           color: string | null
@@ -186,6 +213,39 @@ export type Database = {
           notes?: string | null
           review_date?: string
           tomorrow_tasks?: Json | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      expenses: {
+        Row: {
+          amount: number
+          category: string
+          created_at: string
+          expense_date: string
+          id: string
+          notes: string | null
+          title: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          category?: string
+          created_at?: string
+          expense_date?: string
+          id?: string
+          notes?: string | null
+          title: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          category?: string
+          created_at?: string
+          expense_date?: string
+          id?: string
+          notes?: string | null
+          title?: string
           user_id?: string
         }
         Relationships: []
@@ -415,6 +475,42 @@ export type Database = {
           updated_at?: string
           user_id?: string
           week_start_date?: string
+        }
+        Relationships: []
+      }
+      wishlist: {
+        Row: {
+          created_at: string
+          estimated_price: number | null
+          id: string
+          is_purchased: boolean | null
+          notes: string | null
+          priority: string | null
+          purchased_at: string | null
+          title: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          estimated_price?: number | null
+          id?: string
+          is_purchased?: boolean | null
+          notes?: string | null
+          priority?: string | null
+          purchased_at?: string | null
+          title: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          estimated_price?: number | null
+          id?: string
+          is_purchased?: boolean | null
+          notes?: string | null
+          priority?: string | null
+          purchased_at?: string | null
+          title?: string
+          user_id?: string
         }
         Relationships: []
       }
