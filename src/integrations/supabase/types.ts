@@ -73,6 +73,45 @@ export type Database = {
           },
         ]
       }
+      books: {
+        Row: {
+          author: string | null
+          cover_url: string | null
+          created_at: string
+          id: string
+          last_read_at: string | null
+          notes: string | null
+          status: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          author?: string | null
+          cover_url?: string | null
+          created_at?: string
+          id?: string
+          last_read_at?: string | null
+          notes?: string | null
+          status?: string
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          author?: string | null
+          cover_url?: string | null
+          created_at?: string
+          id?: string
+          last_read_at?: string | null
+          notes?: string | null
+          status?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       budgets: {
         Row: {
           created_at: string
@@ -280,6 +319,86 @@ export type Database = {
         }
         Relationships: []
       }
+      habit_logs: {
+        Row: {
+          completed_count: number
+          created_at: string
+          habit_id: string
+          id: string
+          log_date: string
+          notes: string | null
+          user_id: string
+        }
+        Insert: {
+          completed_count?: number
+          created_at?: string
+          habit_id: string
+          id?: string
+          log_date?: string
+          notes?: string | null
+          user_id: string
+        }
+        Update: {
+          completed_count?: number
+          created_at?: string
+          habit_id?: string
+          id?: string
+          log_date?: string
+          notes?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "habit_logs_habit_id_fkey"
+            columns: ["habit_id"]
+            isOneToOne: false
+            referencedRelation: "habits"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      habits: {
+        Row: {
+          color: string | null
+          created_at: string
+          description: string | null
+          frequency: string
+          icon: string | null
+          id: string
+          is_active: boolean
+          target_count: number | null
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          description?: string | null
+          frequency?: string
+          icon?: string | null
+          id?: string
+          is_active?: boolean
+          target_count?: number | null
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          description?: string | null
+          frequency?: string
+          icon?: string | null
+          id?: string
+          is_active?: boolean
+          target_count?: number | null
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string
@@ -372,6 +491,47 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      reading_sessions: {
+        Row: {
+          book_id: string
+          created_at: string
+          duration_minutes: number | null
+          id: string
+          notes: string | null
+          pages_read: number | null
+          session_date: string
+          user_id: string
+        }
+        Insert: {
+          book_id: string
+          created_at?: string
+          duration_minutes?: number | null
+          id?: string
+          notes?: string | null
+          pages_read?: number | null
+          session_date?: string
+          user_id: string
+        }
+        Update: {
+          book_id?: string
+          created_at?: string
+          duration_minutes?: number | null
+          id?: string
+          notes?: string | null
+          pages_read?: number | null
+          session_date?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reading_sessions_book_id_fkey"
+            columns: ["book_id"]
+            isOneToOne: false
+            referencedRelation: "books"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       recurring_expenses: {
         Row: {
