@@ -22,6 +22,8 @@ import {
   Target,
   FileText,
   Heart,
+  BookOpen,
+  Repeat,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ar } from 'date-fns/locale';
@@ -195,59 +197,69 @@ export default function Dashboard() {
       {/* الإجراءات السريعة - ثاني شيء */}
       <section className="mb-6 animate-fade-in">
         <h2 className="text-lg font-bold mb-4">إجراءات سريعة</h2>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-3 gap-3">
           <Link to="/content">
             <Card className="glass-card hover:border-blue-500/50 transition-all cursor-pointer">
-              <CardContent className="p-4 flex items-center gap-3">
-                <div className="p-3 rounded-xl bg-blue-500/20">
-                  <FileText className="w-6 h-6 text-blue-500" />
+              <CardContent className="p-3 flex flex-col items-center gap-2 text-center">
+                <div className="p-2.5 rounded-xl bg-blue-500/20">
+                  <FileText className="w-5 h-5 text-blue-500" />
                 </div>
-                <div>
-                  <p className="font-medium">مركز المحتوى</p>
-                  <p className="text-xs text-muted-foreground">X و LinkedIn</p>
-                </div>
+                <p className="text-sm font-medium">المحتوى</p>
               </CardContent>
             </Card>
           </Link>
 
           <Link to="/health">
             <Card className="glass-card hover:border-pink-500/50 transition-all cursor-pointer">
-              <CardContent className="p-4 flex items-center gap-3">
-                <div className="p-3 rounded-xl bg-pink-500/20">
-                  <Heart className="w-6 h-6 text-pink-500" />
+              <CardContent className="p-3 flex flex-col items-center gap-2 text-center">
+                <div className="p-2.5 rounded-xl bg-pink-500/20">
+                  <Heart className="w-5 h-5 text-pink-500" />
                 </div>
-                <div>
-                  <p className="font-medium">الصحة</p>
-                  <p className="text-xs text-muted-foreground">الصيام والنوم</p>
-                </div>
+                <p className="text-sm font-medium">الصحة</p>
               </CardContent>
             </Card>
           </Link>
 
           <Link to="/review">
             <Card className="glass-card hover:border-warning/50 transition-all cursor-pointer">
-              <CardContent className="p-4 flex items-center gap-3">
-                <div className="p-3 rounded-xl bg-warning/20">
-                  <CheckCircle2 className="w-6 h-6 text-warning" />
+              <CardContent className="p-3 flex flex-col items-center gap-2 text-center">
+                <div className="p-2.5 rounded-xl bg-warning/20">
+                  <CheckCircle2 className="w-5 h-5 text-warning" />
                 </div>
-                <div>
-                  <p className="font-medium">المراجعة</p>
-                  <p className="text-xs text-muted-foreground">تقييم اليوم</p>
+                <p className="text-sm font-medium">المراجعة</p>
+              </CardContent>
+            </Card>
+          </Link>
+
+          <Link to="/reading">
+            <Card className="glass-card hover:border-emerald-500/50 transition-all cursor-pointer">
+              <CardContent className="p-3 flex flex-col items-center gap-2 text-center">
+                <div className="p-2.5 rounded-xl bg-emerald-500/20">
+                  <BookOpen className="w-5 h-5 text-emerald-500" />
                 </div>
+                <p className="text-sm font-medium">القراءة</p>
+              </CardContent>
+            </Card>
+          </Link>
+
+          <Link to="/habits">
+            <Card className="glass-card hover:border-violet-500/50 transition-all cursor-pointer">
+              <CardContent className="p-3 flex flex-col items-center gap-2 text-center">
+                <div className="p-2.5 rounded-xl bg-violet-500/20">
+                  <Repeat className="w-5 h-5 text-violet-500" />
+                </div>
+                <p className="text-sm font-medium">العادات</p>
               </CardContent>
             </Card>
           </Link>
 
           <Link to="/projects">
             <Card className="glass-card hover:border-purple-500/50 transition-all cursor-pointer">
-              <CardContent className="p-4 flex items-center gap-3">
-                <div className="p-3 rounded-xl bg-purple-500/20">
-                  <Target className="w-6 h-6 text-purple-500" />
+              <CardContent className="p-3 flex flex-col items-center gap-2 text-center">
+                <div className="p-2.5 rounded-xl bg-purple-500/20">
+                  <Target className="w-5 h-5 text-purple-500" />
                 </div>
-                <div>
-                  <p className="font-medium">المشاريع</p>
-                  <p className="text-xs text-muted-foreground">إدارة المشاريع</p>
-                </div>
+                <p className="text-sm font-medium">المشاريع</p>
               </CardContent>
             </Card>
           </Link>
