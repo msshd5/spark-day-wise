@@ -425,7 +425,7 @@ function DailyView({
   const hours = Array.from({ length: 16 }, (_, i) => i + 6); // 6 AM to 9 PM
 
   const getItemsAtHour = (hour: number) => {
-    const items: { type: 'appointment' | 'task' | 'commitment'; data: any }[] = [];
+    const items: { type: 'appointment' | 'task' | 'commitment'; data: any; isSpan?: boolean }[] = [];
     
     dayApts.forEach(a => {
       const h = parseInt(a.start_time.split(':')[0]);
@@ -439,15 +439,32 @@ function DailyView({
       }
     });
 
-    dayCommitments.forEach(c => {
+    return items;
+  };
+
+  // Check if an hour is within a commitment range
+  const getCommitmentAtHour = (hour: number): Commitment | null => {
+    for (const c of dayCommitments) {
       const startH = parseInt(c.start_time.split(':')[0]);
       const endH = parseInt(c.end_time.split(':')[0]);
-      if (hour >= startH && hour < endH && hour === startH) {
-        items.push({ type: 'commitment', data: c });
-      }
-    });
+      if (hour >= startH && hour < endH) return c;
+    }
+    return null;
+  };
 
-    return items;
+  const isCommitmentStart = (hour: number): boolean => {
+    return dayCommitments.some(c => parseInt(c.start_time.split(':')[0]) === hour);
+  };
+
+  const getCommitmentSpanHeight = (hour: number): number => {
+    for (const c of dayCommitments) {
+      const startH = parseInt(c.start_time.split(':')[0]);
+      if (startH === hour) {
+        const endH = parseInt(c.end_time.split(':')[0]);
+        return endH - startH;
+      }
+    }
+    return 0;
   };
 
   return (
@@ -497,33 +514,44 @@ function DailyView({
               <Loader2 className="w-8 h-8 text-primary animate-spin" />
             </div>
           ) : (
-            <div className="space-y-0">
+            <div className="relative">
               {hours.map(hour => {
                 const items = getItemsAtHour(hour);
+                const commitment = getCommitmentAtHour(hour);
+                const isStart = isCommitmentStart(hour);
                 const isCurrentHour = isToday(selectedDate) && new Date().getHours() === hour;
+                const isWithinCommitment = commitment && !isStart;
                 
                 return (
-                  <div key={hour} className={cn("flex gap-3 py-2 border-b border-border/30", isCurrentHour && "bg-primary/5 -mx-4 px-4 rounded-lg")}>
+                  <div key={hour} className={cn(
+                    "flex gap-3 py-2 border-b border-border/30 relative",
+                    isCurrentHour && "bg-primary/5 -mx-4 px-4 rounded-lg",
+                    isWithinCommitment && "bg-secondary/30",
+                  )}>
                     <span className={cn("text-xs w-10 shrink-0 pt-1 text-left", isCurrentHour ? "text-primary font-bold" : "text-muted-foreground")}>
                       {hour > 12 ? `${hour - 12} م` : hour === 12 ? '12 م' : `${hour} ص`}
                     </span>
                     <div className="flex-1 min-h-[28px]">
+                      {/* Commitment block at start hour */}
+                      {isStart && commitment && (
+                        <div className="text-xs p-2.5 rounded-lg mb-1 bg-secondary/40 border border-secondary/60">
+                          <span className="font-medium">🔒 {commitment.title}</span>
+                          <span className="text-muted-foreground mr-2">
+                            {commitment.start_time} - {commitment.end_time}
+                          </span>
+                        </div>
+                      )}
+                      {/* Regular items */}
                       {items.map((item, idx) => (
                         <div key={idx} className={cn(
                           "text-xs p-2 rounded-lg mb-1",
                           item.type === 'appointment' && "bg-accent/15 border border-accent/30",
                           item.type === 'task' && "bg-primary/15 border border-primary/30",
-                          item.type === 'commitment' && "bg-blue-500/15 border border-blue-500/30",
                         )}>
-                          <span className="font-medium">
-                            {item.type === 'commitment' ? `🔒 ${item.data.title}` : item.data.title}
-                          </span>
+                          <span className="font-medium">{item.data.title}</span>
                           <span className="text-muted-foreground mr-2">
                             {item.type === 'appointment' && (
                               <>{item.data.start_time}{item.data.end_time ? ` - ${item.data.end_time}` : ''}</>
-                            )}
-                            {item.type === 'commitment' && (
-                              <>{item.data.start_time} - {item.data.end_time}</>
                             )}
                             {item.type === 'task' && item.data.due_date && (
                               <>{format(new Date(item.data.due_date), 'h:mm a', { locale: ar })}</>

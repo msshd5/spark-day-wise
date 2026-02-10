@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Task, taskPriorityLabels, taskCategoryLabels } from '@/types/database';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -26,7 +27,7 @@ import {
   BookOpen,
   Repeat,
 } from 'lucide-react';
-import { format } from 'date-fns';
+import { format, startOfDay, endOfDay, startOfWeek, endOfWeek } from 'date-fns';
 import { ar } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 
@@ -34,12 +35,15 @@ export default function Dashboard() {
   const { profile, user } = useAuth();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
+  const [rateMode, setRateMode] = useState<'daily' | 'weekly'>('daily');
   const [stats, setStats] = useState({
     total: 0,
     completed: 0,
     overdue: 0,
     inProgress: 0,
   });
+  const [dailyStats, setDailyStats] = useState({ total: 0, completed: 0 });
+  const [weeklyStats, setWeeklyStats] = useState({ total: 0, completed: 0 });
 
   useEffect(() => {
     if (user) {
@@ -48,9 +52,6 @@ export default function Dashboard() {
   }, [user]);
 
   const fetchTasks = async () => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    
     const { data, error } = await supabase
       .from('tasks')
       .select('*')
@@ -67,7 +68,10 @@ export default function Dashboard() {
     const tasksData = (data || []) as Task[];
     setTasks(tasksData);
 
-    // حساب الإحصائيات
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    // حساب الإحصائيات العامة
     const completed = tasksData.filter(t => t.status === 'completed').length;
     const overdue = tasksData.filter(t => 
       t.due_date && 
@@ -76,12 +80,21 @@ export default function Dashboard() {
     ).length;
     const inProgress = tasksData.filter(t => t.status === 'in_progress').length;
 
-    setStats({
-      total: tasksData.length,
-      completed,
-      overdue,
-      inProgress,
-    });
+    setStats({ total: tasksData.length, completed, overdue, inProgress });
+
+    // إحصائيات يومية
+    const todayStart = startOfDay(new Date());
+    const todayEnd = endOfDay(new Date());
+    const todayTasks = tasksData.filter(t => t.due_date && new Date(t.due_date) >= todayStart && new Date(t.due_date) <= todayEnd);
+    const todayCompleted = todayTasks.filter(t => t.status === 'completed').length;
+    setDailyStats({ total: todayTasks.length, completed: todayCompleted });
+
+    // إحصائيات أسبوعية
+    const weekStart = startOfWeek(new Date(), { weekStartsOn: 6 });
+    const weekEnd = endOfWeek(new Date(), { weekStartsOn: 6 });
+    const weekTasks = tasksData.filter(t => t.due_date && new Date(t.due_date) >= weekStart && new Date(t.due_date) <= weekEnd);
+    const weekCompleted = weekTasks.filter(t => t.status === 'completed').length;
+    setWeeklyStats({ total: weekTasks.length, completed: weekCompleted });
 
     setLoading(false);
   };
@@ -106,8 +119,9 @@ export default function Dashboard() {
     t.status !== 'completed'
   );
 
-  const completionRate = stats.total > 0 
-    ? Math.round((stats.completed / stats.total) * 100) 
+  const activeStats = rateMode === 'daily' ? dailyStats : weeklyStats;
+  const completionRate = activeStats.total > 0 
+    ? Math.round((activeStats.completed / activeStats.total) * 100) 
     : 0;
 
   return (
@@ -136,14 +150,25 @@ export default function Dashboard() {
               <div className="p-2 rounded-xl bg-primary/20">
                 <Target className="w-5 h-5 text-primary" />
               </div>
-              <div>
-                <p className="text-sm text-muted-foreground">معدل الإنجاز</p>
-                <p className="text-2xl font-bold">{completionRate}%</p>
+                <div>
+                  <Select value={rateMode} onValueChange={(v) => setRateMode(v as 'daily' | 'weekly')}>
+                    <SelectTrigger className="h-7 w-24 text-xs border-border/50">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="daily">يومي</SelectItem>
+                      <SelectItem value="weekly">أسبوعي</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">معدل الإنجاز</p>
+                  <p className="text-2xl font-bold">{completionRate}%</p>
+                </div>
               </div>
-            </div>
             <div className="text-left">
-              <p className="text-3xl font-bold text-primary">{stats.completed}</p>
-              <p className="text-xs text-muted-foreground">من {stats.total}</p>
+              <p className="text-3xl font-bold text-primary">{activeStats.completed}</p>
+              <p className="text-xs text-muted-foreground">من {activeStats.total}</p>
             </div>
           </div>
           <Progress value={completionRate} className="h-2 bg-muted" />
