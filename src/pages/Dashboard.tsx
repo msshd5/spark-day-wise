@@ -288,13 +288,13 @@ export default function Dashboard() {
             </Card>
           </Link>
 
-          <Link to="/projects">
-            <Card className="glass-card hover:border-purple-500/50 transition-all cursor-pointer">
+          <Link to="/goals">
+            <Card className="glass-card hover:border-emerald-500/50 transition-all cursor-pointer">
               <CardContent className="p-3 flex flex-col items-center gap-2 text-center">
-                <div className="p-2.5 rounded-xl bg-purple-500/20">
-                  <Target className="w-5 h-5 text-purple-500" />
+                <div className="p-2.5 rounded-xl bg-emerald-500/20">
+                  <Target className="w-5 h-5 text-emerald-500" />
                 </div>
-                <p className="text-sm font-medium">المشاريع</p>
+                <p className="text-sm font-medium">الأهداف</p>
               </CardContent>
             </Card>
           </Link>

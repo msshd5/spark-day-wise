@@ -22,6 +22,7 @@ import Health from "./pages/Health";
 import Finance from "./pages/Finance";
 import Reading from "./pages/Reading";
 import Habits from "./pages/Habits";
+import Goals from "./pages/Goals";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -60,6 +61,7 @@ const App = () => (
               <Route path="/finance" element={<Finance />} />
               <Route path="/reading" element={<Reading />} />
               <Route path="/habits" element={<Habits />} />
+              <Route path="/goals" element={<Goals />} />
             </Route>
             
             {/* صفحة 404 */}
