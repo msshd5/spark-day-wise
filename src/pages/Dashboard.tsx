@@ -10,6 +10,7 @@ import { Progress } from '@/components/ui/progress';
 import { WaterTracker } from '@/components/dashboard/WaterTracker';
 import { SocialMediaPlanner } from '@/components/dashboard/SocialMediaPlanner';
 import { IdeasNote } from '@/components/dashboard/IdeasNote';
+import { UpcomingAppointments } from '@/components/dashboard/UpcomingAppointments';
 import { 
   Calendar, 
   CheckCircle2, 
@@ -301,6 +302,11 @@ export default function Dashboard() {
             ))}
           </div>
         )}
+      </section>
+
+      {/* المواعيد القادمة */}
+      <section className="mb-6">
+        <UpcomingAppointments />
       </section>
 
       {/* شرب الماء */}
