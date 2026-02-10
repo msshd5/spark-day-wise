@@ -523,20 +523,37 @@ function DailyView({
                 const isWithinCommitment = commitment && !isStart;
                 
                 return (
-                  <div key={hour} className={cn(
-                    "flex gap-3 py-2 border-b border-border/30 relative",
-                    isCurrentHour && "bg-primary/5 -mx-4 px-4 rounded-lg",
-                    isWithinCommitment && "bg-secondary/30",
-                  )}>
-                    <span className={cn("text-xs w-10 shrink-0 pt-1 text-left", isCurrentHour ? "text-primary font-bold" : "text-muted-foreground")}>
+                  <div 
+                    key={hour} 
+                    className={cn(
+                      "flex gap-3 py-2 border-b border-border/30 relative -mx-4 px-4",
+                      isCurrentHour && "ring-1 ring-primary/30 rounded-lg",
+                    )}
+                    style={commitment ? { 
+                      backgroundColor: `${commitment.color}15`,
+                      borderRightWidth: isStart ? '3px' : undefined,
+                      borderRightColor: isStart ? commitment.color : undefined,
+                    } : undefined}
+                  >
+                    <span className={cn(
+                      "text-xs w-10 shrink-0 pt-1 text-left",
+                      isCurrentHour ? "text-primary font-bold" : "text-muted-foreground"
+                    )}>
                       {hour > 12 ? `${hour - 12} م` : hour === 12 ? '12 م' : `${hour} ص`}
                     </span>
                     <div className="flex-1 min-h-[28px]">
-                      {/* Commitment block at start hour */}
+                      {/* Commitment label at start hour */}
                       {isStart && commitment && (
-                        <div className="text-xs p-2.5 rounded-lg mb-1 bg-secondary/40 border border-secondary/60">
+                        <div 
+                          className="text-xs p-2.5 rounded-lg mb-1 border"
+                          style={{ 
+                            backgroundColor: `${commitment.color}20`,
+                            borderColor: `${commitment.color}40`,
+                            color: commitment.color,
+                          }}
+                        >
                           <span className="font-medium">🔒 {commitment.title}</span>
-                          <span className="text-muted-foreground mr-2">
+                          <span className="opacity-70 mr-2">
                             {commitment.start_time} - {commitment.end_time}
                           </span>
                         </div>
