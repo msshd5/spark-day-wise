@@ -21,6 +21,10 @@ export function useNotifications() {
         
         // تذكير المراجعة المسائية
         await notificationService.scheduleDailyReviewReminder(21, 0);
+        
+        // تذكيرات العادات اليومية
+        await notificationService.scheduleHabitReminder(10, 0);
+        await notificationService.scheduleHabitEveningReminder(20, 0);
       }
     };
 
@@ -34,5 +38,7 @@ export function useNotifications() {
     cancelReminder: notificationService.cancelReminder.bind(notificationService),
     getPendingReminders: notificationService.getPendingReminders.bind(notificationService),
     scheduleWaterReminders: notificationService.scheduleWaterReminders.bind(notificationService),
+    scheduleHabitReminder: notificationService.scheduleHabitReminder.bind(notificationService),
+    scheduleHabitEveningReminder: notificationService.scheduleHabitEveningReminder.bind(notificationService),
   };
 }

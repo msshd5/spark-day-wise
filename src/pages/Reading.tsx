@@ -49,6 +49,9 @@ export default function Reading() {
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [editingBook, setEditingBook] = useState<Book | null>(null);
   const [lastReadSession, setLastReadSession] = useState<string | null>(null);
+  const [sessionBook, setSessionBook] = useState<Book | null>(null);
+  const [sessionPages, setSessionPages] = useState('');
+  const [sessionDuration, setSessionDuration] = useState('');
 
   // Form state
   const [title, setTitle] = useState('');
@@ -142,19 +145,26 @@ export default function Reading() {
     }
   };
 
-  const handleLogReading = async (book: Book) => {
+  const handleLogReading = async () => {
+    if (!sessionBook) return;
+
     const { error } = await supabase.from('reading_sessions').insert({
       user_id: user!.id,
-      book_id: book.id,
+      book_id: sessionBook.id,
+      pages_read: sessionPages ? parseInt(sessionPages) : null,
+      duration_minutes: sessionDuration ? parseInt(sessionDuration) : null,
     });
 
     if (!error) {
       await supabase
         .from('books')
         .update({ last_read_at: new Date().toISOString() })
-        .eq('id', book.id);
+        .eq('id', sessionBook.id);
 
-      toast({ title: 'تم', description: `تم تسجيل جلسة قراءة لـ "${book.title}"` });
+      toast({ title: 'تم', description: `تم تسجيل جلسة قراءة لـ "${sessionBook.title}"` });
+      setSessionBook(null);
+      setSessionPages('');
+      setSessionDuration('');
       fetchBooks();
       fetchLastReadSession();
     }
@@ -309,7 +319,7 @@ export default function Reading() {
                       variant="ghost"
                       size="icon"
                       className="h-8 w-8"
-                      onClick={() => handleLogReading(book)}
+                      onClick={() => setSessionBook(book)}
                       title="تسجيل جلسة قراءة"
                     >
                       <BookOpen className="w-4 h-4 text-primary" />
@@ -347,26 +357,16 @@ export default function Reading() {
           <div className="space-y-4 pt-4">
             <div>
               <Label>عنوان الكتاب *</Label>
-              <Input
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="أدخل عنوان الكتاب"
-              />
+              <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="أدخل عنوان الكتاب" />
             </div>
             <div>
               <Label>المؤلف</Label>
-              <Input
-                value={author}
-                onChange={(e) => setAuthor(e.target.value)}
-                placeholder="اسم المؤلف (اختياري)"
-              />
+              <Input value={author} onChange={(e) => setAuthor(e.target.value)} placeholder="اسم المؤلف (اختياري)" />
             </div>
             <div>
               <Label>الحالة</Label>
               <Select value={status} onValueChange={(v) => setStatus(v as BookStatus)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
+                <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {Object.entries(bookStatusLabels).map(([key, label]) => (
                     <SelectItem key={key} value={key}>{label}</SelectItem>
@@ -374,8 +374,40 @@ export default function Reading() {
                 </SelectContent>
               </Select>
             </div>
-            <Button onClick={handleUpdateBook} className="w-full btn-gradient">
-              حفظ التغييرات
+            <Button onClick={handleUpdateBook} className="w-full btn-gradient">حفظ التغييرات</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog تسجيل جلسة قراءة */}
+      <Dialog open={!!sessionBook} onOpenChange={() => { setSessionBook(null); setSessionPages(''); setSessionDuration(''); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>تسجيل جلسة قراءة - {sessionBook?.title}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 pt-4">
+            <div>
+              <Label>عدد الصفحات (اختياري)</Label>
+              <Input
+                type="number"
+                value={sessionPages}
+                onChange={(e) => setSessionPages(e.target.value)}
+                placeholder="مثال: 30"
+                min="1"
+              />
+            </div>
+            <div>
+              <Label>مدة القراءة بالدقائق (اختياري)</Label>
+              <Input
+                type="number"
+                value={sessionDuration}
+                onChange={(e) => setSessionDuration(e.target.value)}
+                placeholder="مثال: 45"
+                min="1"
+              />
+            </div>
+            <Button onClick={handleLogReading} className="w-full btn-gradient">
+              تسجيل الجلسة
             </Button>
           </div>
         </DialogContent>
