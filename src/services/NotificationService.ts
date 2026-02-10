@@ -195,6 +195,44 @@ class NotificationService {
     });
   }
 
+  // تذكير يومي بالعادات
+  async scheduleHabitReminder(hour: number = 10, minute: number = 0) {
+    const now = new Date();
+    const reminderTime = new Date();
+    reminderTime.setHours(hour, minute, 0, 0);
+
+    if (reminderTime <= now) {
+      reminderTime.setDate(reminderTime.getDate() + 1);
+    }
+
+    await this.scheduleReminder({
+      id: 996,
+      title: '✅ عاداتك اليومية',
+      body: 'لا تنسَ تسجيل عاداتك اليوم! حافظ على سلسلة إنجازاتك',
+      scheduledAt: reminderTime,
+      data: { type: 'habit_reminder' },
+    });
+  }
+
+  // تذكير مسائي بالعادات غير المكتملة
+  async scheduleHabitEveningReminder(hour: number = 20, minute: number = 0) {
+    const now = new Date();
+    const reminderTime = new Date();
+    reminderTime.setHours(hour, minute, 0, 0);
+
+    if (reminderTime <= now) {
+      reminderTime.setDate(reminderTime.getDate() + 1);
+    }
+
+    await this.scheduleReminder({
+      id: 995,
+      title: '🌙 تذكير مسائي بالعادات',
+      body: 'هل أكملت عاداتك اليوم؟ لا يزال لديك وقت!',
+      scheduledAt: reminderTime,
+      data: { type: 'habit_evening_reminder' },
+    });
+  }
+
   async cancelReminder(notificationId: number) {
     if (!Capacitor.isNativePlatform()) return;
 
