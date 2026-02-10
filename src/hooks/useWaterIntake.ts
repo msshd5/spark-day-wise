@@ -18,7 +18,7 @@ export function useWaterIntake() {
   const [intakes, setIntakes] = useState<WaterIntake[]>([]);
   const [loading, setLoading] = useState(true);
   const [todayTotal, setTodayTotal] = useState(0);
-  const [goal, setGoal] = useState(2000);
+  const [goal, setGoal] = useState(4500);
 
   const today = format(new Date(), 'yyyy-MM-dd');
 
