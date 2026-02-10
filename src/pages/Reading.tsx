@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,9 +9,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { BookOpen, Plus, Clock, Calendar, Pencil, Trash2, BookMarked } from 'lucide-react';
-import { format, formatDistanceToNow } from 'date-fns';
+import { BookOpen, Plus, Clock, Calendar, Pencil, Trash2, BookMarked, FileText, Timer } from 'lucide-react';
+import { format, formatDistanceToNow, subDays, startOfMonth, endOfMonth } from 'date-fns';
 import { ar } from 'date-fns/locale';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 type BookStatus = 'want_to_read' | 'reading' | 'completed' | 'completed_multiple' | 'want_to_reread';
 
@@ -49,6 +50,7 @@ export default function Reading() {
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [editingBook, setEditingBook] = useState<Book | null>(null);
   const [lastReadSession, setLastReadSession] = useState<string | null>(null);
+  const [monthlySessions, setMonthlySessions] = useState<{ session_date: string; pages_read: number | null; duration_minutes: number | null }[]>([]);
   const [sessionBook, setSessionBook] = useState<Book | null>(null);
   const [sessionPages, setSessionPages] = useState('');
   const [sessionDuration, setSessionDuration] = useState('');
@@ -62,6 +64,7 @@ export default function Reading() {
     if (user) {
       fetchBooks();
       fetchLastReadSession();
+      fetchMonthlySessions();
     }
   }, [user]);
 
@@ -91,6 +94,48 @@ export default function Reading() {
       setLastReadSession(data.created_at);
     }
   };
+
+  const fetchMonthlySessions = async () => {
+    const monthStart = format(startOfMonth(new Date()), 'yyyy-MM-dd');
+    const monthEnd = format(endOfMonth(new Date()), 'yyyy-MM-dd');
+    
+    const { data } = await supabase
+      .from('reading_sessions')
+      .select('session_date, pages_read, duration_minutes')
+      .eq('user_id', user!.id)
+      .gte('session_date', monthStart)
+      .lte('session_date', monthEnd)
+      .order('session_date');
+
+    if (data) {
+      setMonthlySessions(data);
+    }
+  };
+
+  const monthlyStats = useMemo(() => {
+    const totalPages = monthlySessions.reduce((s, r) => s + (r.pages_read || 0), 0);
+    const totalMinutes = monthlySessions.reduce((s, r) => s + (r.duration_minutes || 0), 0);
+    const totalHours = Math.round((totalMinutes / 60) * 10) / 10;
+    const sessionCount = monthlySessions.length;
+
+    // Group by date for chart
+    const byDate: Record<string, { pages: number; minutes: number }> = {};
+    monthlySessions.forEach(s => {
+      if (!byDate[s.session_date]) byDate[s.session_date] = { pages: 0, minutes: 0 };
+      byDate[s.session_date].pages += s.pages_read || 0;
+      byDate[s.session_date].minutes += s.duration_minutes || 0;
+    });
+
+    const chartData = Object.entries(byDate)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([date, vals]) => ({
+        label: format(new Date(date + 'T00:00:00'), 'd', { locale: ar }),
+        pages: vals.pages,
+        hours: Math.round((vals.minutes / 60) * 10) / 10,
+      }));
+
+    return { totalPages, totalHours, sessionCount, chartData };
+  }, [monthlySessions]);
 
   const handleAddBook = async () => {
     if (!title.trim()) return;
@@ -167,6 +212,7 @@ export default function Reading() {
       setSessionDuration('');
       fetchBooks();
       fetchLastReadSession();
+      fetchMonthlySessions();
     }
   };
 
@@ -279,6 +325,74 @@ export default function Reading() {
           <p className="text-xs text-muted-foreground">مخطط</p>
         </Card>
       </div>
+
+      {/* إحصائيات شهرية */}
+      <Card className="glass-card">
+        <CardContent className="py-4">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-bold flex items-center gap-2">
+              <Calendar className="w-5 h-5 text-primary" />
+              إحصائيات {format(new Date(), 'MMMM', { locale: ar })}
+            </h3>
+          </div>
+
+          <div className="grid grid-cols-3 gap-3 mb-4">
+            <div className="text-center p-3 rounded-xl bg-muted/50">
+              <FileText className="w-4 h-4 mx-auto mb-1 text-primary" />
+              <p className="text-lg font-bold">{monthlyStats.totalPages}</p>
+              <p className="text-xs text-muted-foreground">صفحة</p>
+            </div>
+            <div className="text-center p-3 rounded-xl bg-muted/50">
+              <Timer className="w-4 h-4 mx-auto mb-1 text-accent" />
+              <p className="text-lg font-bold">{monthlyStats.totalHours}</p>
+              <p className="text-xs text-muted-foreground">ساعة</p>
+            </div>
+            <div className="text-center p-3 rounded-xl bg-muted/50">
+              <BookOpen className="w-4 h-4 mx-auto mb-1 text-success" />
+              <p className="text-lg font-bold">{monthlyStats.sessionCount}</p>
+              <p className="text-xs text-muted-foreground">جلسة</p>
+            </div>
+          </div>
+
+          {monthlyStats.chartData.length > 0 && (
+            <div className="h-44 w-full" dir="ltr">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={monthlyStats.chartData} barSize={8}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+                  <XAxis 
+                    dataKey="label" 
+                    tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
+                    axisLine={false}
+                    tickLine={false}
+                  />
+                  <YAxis 
+                    tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
+                    axisLine={false}
+                    tickLine={false}
+                    width={30}
+                  />
+                  <Tooltip 
+                    contentStyle={{ 
+                      backgroundColor: 'hsl(var(--card))',
+                      border: '1px solid hsl(var(--border))',
+                      borderRadius: '0.75rem',
+                      direction: 'rtl',
+                      fontSize: 12,
+                    }}
+                    formatter={(value: number, name: string) => [
+                      value, 
+                      name === 'pages' ? 'صفحات' : 'ساعات'
+                    ]}
+                    labelFormatter={(label) => `يوم ${label}`}
+                  />
+                  <Bar dataKey="pages" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} name="pages" />
+                  <Bar dataKey="hours" fill="hsl(var(--accent))" radius={[4, 4, 0, 0]} name="hours" />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* قائمة الكتب */}
       {loading ? (
