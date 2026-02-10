@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
@@ -8,9 +8,10 @@ import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Progress } from '@/components/ui/progress';
 import { useToast } from '@/hooks/use-toast';
-import { Target, Plus, Check, Flame, Calendar, Pencil, Trash2, TrendingUp } from 'lucide-react';
-import { format, subDays, startOfWeek, eachDayOfInterval, isSameDay } from 'date-fns';
+import { Target, Plus, Check, Flame, Calendar, Pencil, Trash2, TrendingUp, BarChart3 } from 'lucide-react';
+import { format, subDays, startOfWeek, eachDayOfInterval, isSameDay, startOfMonth, endOfMonth } from 'date-fns';
 import { ar } from 'date-fns/locale';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 interface Habit {
   id: string;
@@ -72,12 +73,12 @@ export default function Habits() {
   };
 
   const fetchLogs = async () => {
-    const weekAgo = format(subDays(new Date(), 7), 'yyyy-MM-dd');
+    const monthAgo = format(subDays(new Date(), 30), 'yyyy-MM-dd');
     const { data } = await supabase
       .from('habit_logs')
       .select('*')
       .eq('user_id', user!.id)
-      .gte('log_date', weekAgo);
+      .gte('log_date', monthAgo);
 
     if (data) {
       setLogs(data as HabitLog[]);
@@ -323,6 +324,9 @@ export default function Habits() {
         </CardContent>
       </Card>
 
+      {/* رسم بياني شهري */}
+      <MonthlyChart habits={habits} logs={logs} />
+
       {/* قائمة العادات */}
       {loading ? (
         <div className="text-center py-8 text-muted-foreground">جاري التحميل...</div>
@@ -499,5 +503,92 @@ export default function Habits() {
         </DialogContent>
       </Dialog>
     </div>
+  );
+}
+
+function MonthlyChart({ habits, logs }: { habits: Habit[]; logs: HabitLog[] }) {
+  const chartData = useMemo(() => {
+    const days: { date: string; label: string; completed: number; total: number; rate: number }[] = [];
+    
+    for (let i = 29; i >= 0; i--) {
+      const day = subDays(new Date(), i);
+      const dateStr = format(day, 'yyyy-MM-dd');
+      const completed = new Set(
+        logs.filter(l => l.log_date === dateStr).map(l => l.habit_id)
+      ).size;
+      const total = habits.length;
+      
+      days.push({
+        date: dateStr,
+        label: format(day, 'd', { locale: ar }),
+        completed,
+        total,
+        rate: total > 0 ? Math.round((completed / total) * 100) : 0,
+      });
+    }
+    
+    return days;
+  }, [habits, logs]);
+
+  const avgRate = chartData.length > 0 
+    ? Math.round(chartData.reduce((s, d) => s + d.rate, 0) / chartData.length) 
+    : 0;
+
+  if (habits.length === 0) return null;
+
+  return (
+    <Card className="glass-card">
+      <CardContent className="py-4">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <BarChart3 className="w-5 h-5 text-primary" />
+            <h3 className="font-bold">التقدم الشهري</h3>
+          </div>
+          <div className="text-left">
+            <span className="text-2xl font-bold text-primary">{avgRate}%</span>
+            <p className="text-xs text-muted-foreground">المعدل</p>
+          </div>
+        </div>
+
+        <div className="h-48 w-full" dir="ltr">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={chartData} barSize={6}>
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+              <XAxis 
+                dataKey="label" 
+                tick={{ fontSize: 9, fill: 'hsl(var(--muted-foreground))' }}
+                axisLine={false}
+                tickLine={false}
+                interval={4}
+              />
+              <YAxis 
+                tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
+                axisLine={false}
+                tickLine={false}
+                domain={[0, 100]}
+                tickFormatter={(v) => `${v}%`}
+                width={35}
+              />
+              <Tooltip 
+                contentStyle={{ 
+                  backgroundColor: 'hsl(var(--card))',
+                  border: '1px solid hsl(var(--border))',
+                  borderRadius: '0.75rem',
+                  direction: 'rtl',
+                  fontSize: 12,
+                }}
+                formatter={(value: number) => [`${value}%`, 'نسبة الإنجاز']}
+                labelFormatter={(label) => `يوم ${label}`}
+              />
+              <Bar 
+                dataKey="rate" 
+                fill="hsl(var(--primary))" 
+                radius={[4, 4, 0, 0]}
+              />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
