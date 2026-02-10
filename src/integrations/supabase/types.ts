@@ -367,6 +367,48 @@ export type Database = {
         }
         Relationships: []
       }
+      goals: {
+        Row: {
+          created_at: string
+          description: string | null
+          fits_commitment_time: boolean | null
+          id: string
+          is_completed: boolean
+          order_index: number | null
+          period_date: string
+          title: string
+          type: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          fits_commitment_time?: boolean | null
+          id?: string
+          is_completed?: boolean
+          order_index?: number | null
+          period_date?: string
+          title: string
+          type?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          fits_commitment_time?: boolean | null
+          id?: string
+          is_completed?: boolean
+          order_index?: number | null
+          period_date?: string
+          title?: string
+          type?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       habit_logs: {
         Row: {
           completed_count: number
