@@ -518,11 +518,17 @@ function DailyView({
                           <span className="font-medium">
                             {item.type === 'commitment' ? `🔒 ${item.data.title}` : item.data.title}
                           </span>
-                          {item.type === 'appointment' && item.data.start_time && (
-                            <span className="text-muted-foreground mr-2">
-                              {item.data.start_time}{item.data.end_time ? ` - ${item.data.end_time}` : ''}
-                            </span>
-                          )}
+                          <span className="text-muted-foreground mr-2">
+                            {item.type === 'appointment' && (
+                              <>{item.data.start_time}{item.data.end_time ? ` - ${item.data.end_time}` : ''}</>
+                            )}
+                            {item.type === 'commitment' && (
+                              <>{item.data.start_time} - {item.data.end_time}</>
+                            )}
+                            {item.type === 'task' && item.data.due_date && (
+                              <>{format(new Date(item.data.due_date), 'h:mm a', { locale: ar })}</>
+                            )}
+                          </span>
                         </div>
                       ))}
                     </div>
