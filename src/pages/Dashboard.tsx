@@ -27,7 +27,7 @@ import {
   BookOpen,
   Repeat,
 } from 'lucide-react';
-import { format, startOfDay, endOfDay, startOfWeek, endOfWeek } from 'date-fns';
+import { format, startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from 'date-fns';
 import { ar } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 
@@ -35,7 +35,7 @@ export default function Dashboard() {
   const { profile, user } = useAuth();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
-  const [rateMode, setRateMode] = useState<'daily' | 'weekly'>('daily');
+  const [rateMode, setRateMode] = useState<'daily' | 'weekly' | 'monthly'>('daily');
   const [stats, setStats] = useState({
     total: 0,
     completed: 0,
@@ -44,6 +44,7 @@ export default function Dashboard() {
   });
   const [dailyStats, setDailyStats] = useState({ total: 0, completed: 0 });
   const [weeklyStats, setWeeklyStats] = useState({ total: 0, completed: 0 });
+  const [monthlyStats, setMonthlyStats] = useState({ total: 0, completed: 0 });
 
   useEffect(() => {
     if (user) {
@@ -96,6 +97,13 @@ export default function Dashboard() {
     const weekCompleted = weekTasks.filter(t => t.status === 'completed').length;
     setWeeklyStats({ total: weekTasks.length, completed: weekCompleted });
 
+    // إحصائيات شهرية
+    const monthStart = startOfMonth(new Date());
+    const monthEnd = endOfMonth(new Date());
+    const monthTasks = tasksData.filter(t => t.due_date && new Date(t.due_date) >= monthStart && new Date(t.due_date) <= monthEnd);
+    const monthCompleted = monthTasks.filter(t => t.status === 'completed').length;
+    setMonthlyStats({ total: monthTasks.length, completed: monthCompleted });
+
     setLoading(false);
   };
 
@@ -119,7 +127,7 @@ export default function Dashboard() {
     t.status !== 'completed'
   );
 
-  const activeStats = rateMode === 'daily' ? dailyStats : weeklyStats;
+  const activeStats = rateMode === 'daily' ? dailyStats : rateMode === 'weekly' ? weeklyStats : monthlyStats;
   const completionRate = activeStats.total > 0 
     ? Math.round((activeStats.completed / activeStats.total) * 100) 
     : 0;
@@ -151,13 +159,14 @@ export default function Dashboard() {
                 <Target className="w-5 h-5 text-primary" />
               </div>
                 <div>
-                  <Select value={rateMode} onValueChange={(v) => setRateMode(v as 'daily' | 'weekly')}>
+                  <Select value={rateMode} onValueChange={(v) => setRateMode(v as 'daily' | 'weekly' | 'monthly')}>
                     <SelectTrigger className="h-7 w-24 text-xs border-border/50">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="daily">يومي</SelectItem>
                       <SelectItem value="weekly">أسبوعي</SelectItem>
+                      <SelectItem value="monthly">شهري</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
