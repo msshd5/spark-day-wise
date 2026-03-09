@@ -23,6 +23,7 @@ import Finance from "./pages/Finance";
 import Reading from "./pages/Reading";
 import Habits from "./pages/Habits";
 import Goals from "./pages/Goals";
+import Analytics from "./pages/Analytics";
 import Medications from "./pages/Medications";
 import Courses from "./pages/Courses";
 import Journal from "./pages/Journal";
