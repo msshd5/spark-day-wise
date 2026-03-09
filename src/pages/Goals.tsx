@@ -12,11 +12,22 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
 import { 
   Target, Plus, Trash2, CalendarDays, CalendarRange, Calendar,
-  Clock, ChevronRight, ChevronLeft, Loader2, ListTodo,
+  Clock, ChevronRight, ChevronLeft, Loader2, ListTodo, Check, RefreshCw
 } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, addMonths, subMonths, addWeeks, subWeeks, addDays, subDays } from 'date-fns';
 import { ar } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 interface Goal {
   id: string;
@@ -36,9 +47,11 @@ export default function Goals() {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<'monthly' | 'weekly' | 'daily'>('monthly');
   const [goals, setGoals] = useState<Goal[]>([]);
+  const [linkedGoalIds, setLinkedGoalIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [newGoal, setNewGoal] = useState('');
   const [newFitsCommitment, setNewFitsCommitment] = useState(false);
+  const [bulkConverting, setBulkConverting] = useState(false);
 
   // Navigation dates
   const [monthDate, setMonthDate] = useState(new Date());
@@ -50,6 +63,18 @@ export default function Goals() {
     if (activeTab === 'weekly') return format(startOfWeek(weekDate, { weekStartsOn: 6 }), 'yyyy-MM-dd');
     return format(dayDate, 'yyyy-MM-dd');
   }, [activeTab, monthDate, weekDate, dayDate]);
+
+  const fetchLinkedGoals = useCallback(async (goalIds: string[]) => {
+    if (!user || goalIds.length === 0) return new Set<string>();
+    
+    const { data } = await supabase
+      .from('tasks')
+      .select('goal_id')
+      .eq('user_id', user.id)
+      .in('goal_id', goalIds);
+    
+    return new Set((data || []).map(t => t.goal_id).filter(Boolean) as string[]);
+  }, [user]);
 
   const fetchGoals = useCallback(async () => {
     if (!user) return;
@@ -80,10 +105,16 @@ export default function Goals() {
       console.error('Error fetching goals:', error);
       toast.error('خطأ في جلب الأهداف');
     } else {
-      setGoals((data || []) as Goal[]);
+      const goalsData = (data || []) as Goal[];
+      setGoals(goalsData);
+      
+      // Fetch linked goals
+      const goalIds = goalsData.map(g => g.id);
+      const linked = await fetchLinkedGoals(goalIds);
+      setLinkedGoalIds(linked);
     }
     setLoading(false);
-  }, [user, activeTab, monthDate, weekDate, dayDate]);
+  }, [user, activeTab, monthDate, weekDate, dayDate, fetchLinkedGoals]);
 
   useEffect(() => {
     fetchGoals();
@@ -137,10 +168,20 @@ export default function Goals() {
       return;
     }
     setGoals(prev => prev.filter(g => g.id !== id));
+    setLinkedGoalIds(prev => {
+      const newSet = new Set(prev);
+      newSet.delete(id);
+      return newSet;
+    });
     toast.success('تم حذف الهدف');
   };
 
   const convertToTask = async (goal: Goal) => {
+    if (linkedGoalIds.has(goal.id)) {
+      toast.info('تم تحويل هذا الهدف مسبقاً');
+      return;
+    }
+
     const { error } = await supabase
       .from('tasks')
       .insert({
@@ -150,13 +191,50 @@ export default function Goals() {
         priority: 'medium',
         category: 'work',
         due_date: goal.type === 'daily' ? goal.period_date : null,
+        goal_id: goal.id,
       });
 
     if (error) {
       toast.error('خطأ في إنشاء المهمة');
       return;
     }
+    
+    setLinkedGoalIds(prev => new Set([...prev, goal.id]));
     toast.success('تم تحويل الهدف إلى مهمة ✓');
+  };
+
+  const bulkConvertToTasks = async () => {
+    const unconvertedGoals = goals.filter(g => !linkedGoalIds.has(g.id));
+    
+    if (unconvertedGoals.length === 0) {
+      toast.info('جميع الأهداف محوّلة بالفعل');
+      return;
+    }
+
+    setBulkConverting(true);
+    
+    const tasksToInsert = unconvertedGoals.map(goal => ({
+      user_id: user!.id,
+      title: goal.title,
+      status: 'pending',
+      priority: 'medium',
+      category: 'work',
+      due_date: goal.type === 'daily' ? goal.period_date : null,
+      goal_id: goal.id,
+    }));
+
+    const { error } = await supabase.from('tasks').insert(tasksToInsert);
+
+    if (error) {
+      toast.error('خطأ في تحويل الأهداف');
+      setBulkConverting(false);
+      return;
+    }
+
+    const newLinked = new Set([...linkedGoalIds, ...unconvertedGoals.map(g => g.id)]);
+    setLinkedGoalIds(newLinked);
+    setBulkConverting(false);
+    toast.success(`تم تحويل ${unconvertedGoals.length} أهداف إلى مهام ✓`);
   };
 
   const toggleFitsCommitment = async (goal: Goal) => {
@@ -175,6 +253,7 @@ export default function Goals() {
 
   const completedCount = goals.filter(g => g.is_completed).length;
   const progress = goals.length > 0 ? Math.round((completedCount / goals.length) * 100) : 0;
+  const unconvertedCount = goals.filter(g => !linkedGoalIds.has(g.id)).length;
 
   const getPeriodLabel = () => {
     if (activeTab === 'monthly') return format(monthDate, 'MMMM yyyy', { locale: ar });
@@ -196,12 +275,6 @@ export default function Goals() {
     if (activeTab === 'monthly') setMonthDate(m => addMonths(m, 1));
     else if (activeTab === 'weekly') setWeekDate(w => addWeeks(w, 1));
     else setDayDate(d => addDays(d, 1));
-  };
-
-  const tabIcons = {
-    monthly: CalendarDays,
-    weekly: CalendarRange,
-    daily: Calendar,
   };
 
   return (
@@ -287,6 +360,41 @@ export default function Goals() {
           </CardContent>
         </Card>
 
+        {/* Bulk convert button */}
+        {goals.length > 0 && unconvertedCount > 0 && (
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button 
+                variant="outline" 
+                className="w-full mb-4 gap-2"
+                disabled={bulkConverting}
+              >
+                {bulkConverting ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <RefreshCw className="w-4 h-4" />
+                )}
+                تحويل كل الأهداف إلى مهام ({unconvertedCount})
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>تحويل الأهداف إلى مهام</AlertDialogTitle>
+                <AlertDialogDescription>
+                  سيتم تحويل {unconvertedCount} أهداف غير محوّلة إلى مهام جديدة.
+                  الأهداف المحوّلة مسبقاً ستُتجاهل.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>إلغاء</AlertDialogCancel>
+                <AlertDialogAction onClick={bulkConvertToTasks}>
+                  تأكيد التحويل
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        )}
+
         {/* Goals list */}
         {loading ? (
           <div className="flex justify-center py-12">
@@ -302,70 +410,96 @@ export default function Goals() {
           </Card>
         ) : (
           <div className="space-y-2">
-            {goals.map((goal) => (
-              <Card key={goal.id} className={cn(
-                "glass-card transition-all",
-                goal.is_completed && "opacity-60"
-              )}>
-                <CardContent className="p-3">
-                  <div className="flex items-start gap-3">
-                    <Checkbox
-                      checked={goal.is_completed}
-                      onCheckedChange={() => toggleComplete(goal)}
-                      className="mt-1"
-                    />
-                    <div className="flex-1 min-w-0">
-                      <p className={cn(
-                        "font-medium text-sm",
-                        goal.is_completed && "line-through text-muted-foreground"
-                      )}>
-                        {goal.title}
-                      </p>
-                      
-                      {/* Fits commitment badge - daily only */}
-                      {goal.type === 'daily' && goal.fits_commitment_time !== null && (
-                        <button
-                          onClick={() => toggleFitsCommitment(goal)}
-                          className="mt-1.5"
+            {goals.map((goal) => {
+              const isConverted = linkedGoalIds.has(goal.id);
+              
+              return (
+                <Card key={goal.id} className={cn(
+                  "glass-card transition-all",
+                  goal.is_completed && "opacity-60"
+                )}>
+                  <CardContent className="p-3">
+                    <div className="flex items-start gap-3">
+                      <Checkbox
+                        checked={goal.is_completed}
+                        onCheckedChange={() => toggleComplete(goal)}
+                        className="mt-1"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <p className={cn(
+                          "font-medium text-sm",
+                          goal.is_completed && "line-through text-muted-foreground"
+                        )}>
+                          {goal.title}
+                        </p>
+                        
+                        <div className="flex flex-wrap gap-1.5 mt-1.5">
+                          {/* Converted badge */}
+                          {isConverted && (
+                            <Badge 
+                              variant="outline" 
+                              className="text-xs border-green-500/50 text-green-600 bg-green-500/10"
+                            >
+                              <Check className="w-3 h-3 ml-1" />
+                              تم التحويل
+                            </Badge>
+                          )}
+                          
+                          {/* Fits commitment badge - daily only */}
+                          {goal.type === 'daily' && goal.fits_commitment_time !== null && (
+                            <button
+                              onClick={() => toggleFitsCommitment(goal)}
+                            >
+                              <Badge 
+                                variant="outline" 
+                                className={cn(
+                                  "text-xs cursor-pointer transition-colors",
+                                  goal.fits_commitment_time 
+                                    ? "border-accent/50 text-accent bg-accent/10" 
+                                    : "border-destructive/50 text-destructive bg-destructive/10"
+                                )}
+                              >
+                                <Clock className="w-3 h-3 ml-1" />
+                                {goal.fits_commitment_time ? 'وقت الالتزام ✓' : 'خارج الالتزام'}
+                              </Badge>
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className={cn(
+                            "h-7 w-7 shrink-0",
+                            isConverted 
+                              ? "text-muted-foreground cursor-not-allowed" 
+                              : "text-primary"
+                          )}
+                          title={isConverted ? "تم التحويل" : "حوّل إلى مهمة"}
+                          onClick={() => convertToTask(goal)}
+                          disabled={isConverted}
                         >
-                          <Badge 
-                            variant="outline" 
-                            className={cn(
-                              "text-xs cursor-pointer transition-colors",
-                              goal.fits_commitment_time 
-                                ? "border-accent/50 text-accent bg-accent/10" 
-                                : "border-destructive/50 text-destructive bg-destructive/10"
-                            )}
-                          >
-                            <Clock className="w-3 h-3 ml-1" />
-                            {goal.fits_commitment_time ? 'وقت الالتزام ✓' : 'خارج الالتزام'}
-                          </Badge>
-                        </button>
-                      )}
+                          {isConverted ? (
+                            <Check className="w-3.5 h-3.5" />
+                          ) : (
+                            <ListTodo className="w-3.5 h-3.5" />
+                          )}
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-destructive shrink-0"
+                          onClick={() => deleteGoal(goal.id)}
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </Button>
+                      </div>
                     </div>
-                    <div className="flex gap-1">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7 text-primary shrink-0"
-                        title="حوّل إلى مهمة"
-                        onClick={() => convertToTask(goal)}
-                      >
-                        <ListTodo className="w-3.5 h-3.5" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7 text-destructive shrink-0"
-                        onClick={() => deleteGoal(goal.id)}
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </Button>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+                  </CardContent>
+                </Card>
+              );
+            })}
           </div>
         )}
       </Tabs>
