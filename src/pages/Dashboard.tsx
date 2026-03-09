@@ -236,69 +236,113 @@ export default function Dashboard() {
       {/* الإجراءات السريعة - ثاني شيء */}
       <section className="mb-6 animate-fade-in">
         <h2 className="text-lg font-bold mb-4">إجراءات سريعة</h2>
-        <div className="grid grid-cols-3 gap-3">
-          <Link to="/content">
-            <Card className="glass-card hover:border-blue-500/50 transition-all cursor-pointer">
-              <CardContent className="p-3 flex flex-col items-center gap-2 text-center">
-                <div className="p-2.5 rounded-xl bg-blue-500/20">
-                  <FileText className="w-5 h-5 text-blue-500" />
+        <div className="grid grid-cols-4 gap-2">
+          <Link to="/projects">
+            <Card className="glass-card hover:border-primary/50 transition-all cursor-pointer">
+              <CardContent className="p-2.5 flex flex-col items-center gap-1.5 text-center">
+                <div className="p-2 rounded-xl bg-primary/20">
+                  <FolderKanban className="w-4 h-4 text-primary" />
                 </div>
-                <p className="text-sm font-medium">المحتوى</p>
-              </CardContent>
-            </Card>
-          </Link>
-
-          <Link to="/health">
-            <Card className="glass-card hover:border-pink-500/50 transition-all cursor-pointer">
-              <CardContent className="p-3 flex flex-col items-center gap-2 text-center">
-                <div className="p-2.5 rounded-xl bg-pink-500/20">
-                  <Heart className="w-5 h-5 text-pink-500" />
-                </div>
-                <p className="text-sm font-medium">الصحة</p>
-              </CardContent>
-            </Card>
-          </Link>
-
-          <Link to="/review">
-            <Card className="glass-card hover:border-warning/50 transition-all cursor-pointer">
-              <CardContent className="p-3 flex flex-col items-center gap-2 text-center">
-                <div className="p-2.5 rounded-xl bg-warning/20">
-                  <CheckCircle2 className="w-5 h-5 text-warning" />
-                </div>
-                <p className="text-sm font-medium">المراجعة</p>
-              </CardContent>
-            </Card>
-          </Link>
-
-          <Link to="/reading">
-            <Card className="glass-card hover:border-emerald-500/50 transition-all cursor-pointer">
-              <CardContent className="p-3 flex flex-col items-center gap-2 text-center">
-                <div className="p-2.5 rounded-xl bg-emerald-500/20">
-                  <BookOpen className="w-5 h-5 text-emerald-500" />
-                </div>
-                <p className="text-sm font-medium">القراءة</p>
-              </CardContent>
-            </Card>
-          </Link>
-
-          <Link to="/habits">
-            <Card className="glass-card hover:border-violet-500/50 transition-all cursor-pointer">
-              <CardContent className="p-3 flex flex-col items-center gap-2 text-center">
-                <div className="p-2.5 rounded-xl bg-violet-500/20">
-                  <Repeat className="w-5 h-5 text-violet-500" />
-                </div>
-                <p className="text-sm font-medium">العادات</p>
+                <p className="text-xs font-medium">المشاريع</p>
               </CardContent>
             </Card>
           </Link>
 
           <Link to="/goals">
             <Card className="glass-card hover:border-emerald-500/50 transition-all cursor-pointer">
-              <CardContent className="p-3 flex flex-col items-center gap-2 text-center">
-                <div className="p-2.5 rounded-xl bg-emerald-500/20">
-                  <Target className="w-5 h-5 text-emerald-500" />
+              <CardContent className="p-2.5 flex flex-col items-center gap-1.5 text-center">
+                <div className="p-2 rounded-xl bg-emerald-500/20">
+                  <Target className="w-4 h-4 text-emerald-500" />
                 </div>
-                <p className="text-sm font-medium">الأهداف</p>
+                <p className="text-xs font-medium">الأهداف</p>
+              </CardContent>
+            </Card>
+          </Link>
+
+          <Link to="/habits">
+            <Card className="glass-card hover:border-violet-500/50 transition-all cursor-pointer">
+              <CardContent className="p-2.5 flex flex-col items-center gap-1.5 text-center">
+                <div className="p-2 rounded-xl bg-violet-500/20">
+                  <Repeat className="w-4 h-4 text-violet-500" />
+                </div>
+                <p className="text-xs font-medium">العادات</p>
+              </CardContent>
+            </Card>
+          </Link>
+
+          <Link to="/medications">
+            <Card className="glass-card hover:border-teal-500/50 transition-all cursor-pointer">
+              <CardContent className="p-2.5 flex flex-col items-center gap-1.5 text-center">
+                <div className="p-2 rounded-xl bg-teal-500/20">
+                  <Pill className="w-4 h-4 text-teal-500" />
+                </div>
+                <p className="text-xs font-medium">الأدوية</p>
+              </CardContent>
+            </Card>
+          </Link>
+
+          <Link to="/reading">
+            <Card className="glass-card hover:border-amber-500/50 transition-all cursor-pointer">
+              <CardContent className="p-2.5 flex flex-col items-center gap-1.5 text-center">
+                <div className="p-2 rounded-xl bg-amber-500/20">
+                  <BookOpen className="w-4 h-4 text-amber-500" />
+                </div>
+                <p className="text-xs font-medium">القراءة</p>
+              </CardContent>
+            </Card>
+          </Link>
+
+          <Link to="/courses">
+            <Card className="glass-card hover:border-orange-500/50 transition-all cursor-pointer">
+              <CardContent className="p-2.5 flex flex-col items-center gap-1.5 text-center">
+                <div className="p-2 rounded-xl bg-orange-500/20">
+                  <GraduationCap className="w-4 h-4 text-orange-500" />
+                </div>
+                <p className="text-xs font-medium">الكورسات</p>
+              </CardContent>
+            </Card>
+          </Link>
+
+          <Link to="/journal">
+            <Card className="glass-card hover:border-rose-500/50 transition-all cursor-pointer">
+              <CardContent className="p-2.5 flex flex-col items-center gap-1.5 text-center">
+                <div className="p-2 rounded-xl bg-rose-500/20">
+                  <PenLine className="w-4 h-4 text-rose-500" />
+                </div>
+                <p className="text-xs font-medium">اليوميات</p>
+              </CardContent>
+            </Card>
+          </Link>
+
+          <Link to="/content">
+            <Card className="glass-card hover:border-blue-500/50 transition-all cursor-pointer">
+              <CardContent className="p-2.5 flex flex-col items-center gap-1.5 text-center">
+                <div className="p-2 rounded-xl bg-blue-500/20">
+                  <FileText className="w-4 h-4 text-blue-500" />
+                </div>
+                <p className="text-xs font-medium">المحتوى</p>
+              </CardContent>
+            </Card>
+          </Link>
+
+          <Link to="/health">
+            <Card className="glass-card hover:border-pink-500/50 transition-all cursor-pointer">
+              <CardContent className="p-2.5 flex flex-col items-center gap-1.5 text-center">
+                <div className="p-2 rounded-xl bg-pink-500/20">
+                  <Heart className="w-4 h-4 text-pink-500" />
+                </div>
+                <p className="text-xs font-medium">الصحة</p>
+              </CardContent>
+            </Card>
+          </Link>
+
+          <Link to="/review">
+            <Card className="glass-card hover:border-warning/50 transition-all cursor-pointer">
+              <CardContent className="p-2.5 flex flex-col items-center gap-1.5 text-center">
+                <div className="p-2 rounded-xl bg-warning/20">
+                  <CheckCircle2 className="w-4 h-4 text-warning" />
+                </div>
+                <p className="text-xs font-medium">المراجعة</p>
               </CardContent>
             </Card>
           </Link>
