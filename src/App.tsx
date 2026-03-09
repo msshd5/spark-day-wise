@@ -23,6 +23,9 @@ import Finance from "./pages/Finance";
 import Reading from "./pages/Reading";
 import Habits from "./pages/Habits";
 import Goals from "./pages/Goals";
+import Medications from "./pages/Medications";
+import Courses from "./pages/Courses";
+import Journal from "./pages/Journal";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
