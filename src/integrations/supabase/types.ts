@@ -843,6 +843,7 @@ export type Database = {
           description: string | null
           due_date: string | null
           estimated_duration: number | null
+          goal_id: string | null
           id: string
           is_recurring: boolean | null
           order_index: number | null
@@ -862,6 +863,7 @@ export type Database = {
           description?: string | null
           due_date?: string | null
           estimated_duration?: number | null
+          goal_id?: string | null
           id?: string
           is_recurring?: boolean | null
           order_index?: number | null
@@ -881,6 +883,7 @@ export type Database = {
           description?: string | null
           due_date?: string | null
           estimated_duration?: number | null
+          goal_id?: string | null
           id?: string
           is_recurring?: boolean | null
           order_index?: number | null
@@ -894,6 +897,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "tasks_goal_id_fkey"
+            columns: ["goal_id"]
+            isOneToOne: false
+            referencedRelation: "goals"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "tasks_parent_task_id_fkey"
             columns: ["parent_task_id"]
