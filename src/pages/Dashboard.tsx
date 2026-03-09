@@ -26,6 +26,10 @@ import {
   Heart,
   BookOpen,
   Repeat,
+  FolderKanban,
+  Pill,
+  GraduationCap,
+  PenLine,
 } from 'lucide-react';
 import { format, startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from 'date-fns';
 import { ar } from 'date-fns/locale';
