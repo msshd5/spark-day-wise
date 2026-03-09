@@ -12,8 +12,14 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
 import { 
   Target, Plus, Trash2, CalendarDays, CalendarRange, Calendar,
-  Clock, ChevronRight, ChevronLeft, Loader2, ListTodo, Check, RefreshCw
+  Clock, ChevronRight, ChevronLeft, Loader2, ListTodo, Check, RefreshCw, Eye
 } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, addMonths, subMonths, addWeeks, subWeeks, addDays, subDays } from 'date-fns';
 import { ar } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
@@ -251,6 +257,25 @@ export default function Goals() {
     setGoals(prev => prev.map(g => g.id === goal.id ? { ...g, fits_commitment_time: newVal } : g));
   };
 
+  // Task viewing state
+  const [viewingGoalId, setViewingGoalId] = useState<string | null>(null);
+  const [goalTasks, setGoalTasks] = useState<Array<{ id: string; title: string; status: string | null; priority: string | null }>>([]);
+  const [loadingTasks, setLoadingTasks] = useState(false);
+
+  const viewLinkedTasks = async (goalId: string) => {
+    setViewingGoalId(goalId);
+    setLoadingTasks(true);
+    const { data } = await supabase
+      .from('tasks')
+      .select('id, title, status, priority')
+      .eq('goal_id', goalId)
+      .eq('user_id', user!.id);
+    setGoalTasks(data || []);
+    setLoadingTasks(false);
+  };
+
+  const statusLabel: Record<string, string> = { completed: 'مكتمل', in_progress: 'قيد التنفيذ', pending: 'معلق' };
+
   const completedCount = goals.filter(g => g.is_completed).length;
   const progress = goals.length > 0 ? Math.round((completedCount / goals.length) * 100) : 0;
   const unconvertedCount = goals.filter(g => !linkedGoalIds.has(g.id)).length;
@@ -486,6 +511,17 @@ export default function Goals() {
                             <ListTodo className="w-3.5 h-3.5" />
                           )}
                         </Button>
+                        {isConverted && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 text-muted-foreground shrink-0"
+                            title="عرض المهام"
+                            onClick={() => viewLinkedTasks(goal.id)}
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                          </Button>
+                        )}
                         <Button
                           variant="ghost"
                           size="icon"
@@ -503,6 +539,40 @@ export default function Goals() {
           </div>
         )}
       </Tabs>
+
+      {/* Linked Tasks Dialog */}
+      <Dialog open={!!viewingGoalId} onOpenChange={() => setViewingGoalId(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>المهام المرتبطة</DialogTitle>
+          </DialogHeader>
+          {loadingTasks ? (
+            <div className="flex justify-center py-6">
+              <Loader2 className="w-6 h-6 animate-spin text-primary" />
+            </div>
+          ) : goalTasks.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-4">لا توجد مهام مرتبطة</p>
+          ) : (
+            <div className="space-y-2">
+              {goalTasks.map(task => (
+                <Card key={task.id} className="glass-card">
+                  <CardContent className="p-3 flex items-center justify-between">
+                    <span className="text-sm font-medium">{task.title}</span>
+                    <div className="flex gap-1.5">
+                      <Badge variant="outline" className="text-xs">
+                        {statusLabel[task.status || 'pending'] || task.status}
+                      </Badge>
+                      <Badge variant="secondary" className="text-xs">
+                        {task.priority || 'medium'}
+                      </Badge>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
