@@ -140,6 +140,25 @@ export default function Goals() {
     toast.success('تم حذف الهدف');
   };
 
+  const convertToTask = async (goal: Goal) => {
+    const { error } = await supabase
+      .from('tasks')
+      .insert({
+        user_id: user!.id,
+        title: goal.title,
+        status: 'pending',
+        priority: 'medium',
+        category: 'work',
+        due_date: goal.type === 'daily' ? goal.period_date : null,
+      });
+
+    if (error) {
+      toast.error('خطأ في إنشاء المهمة');
+      return;
+    }
+    toast.success('تم تحويل الهدف إلى مهمة ✓');
+  };
+
   const toggleFitsCommitment = async (goal: Goal) => {
     const newVal = !goal.fits_commitment_time;
     const { error } = await supabase
