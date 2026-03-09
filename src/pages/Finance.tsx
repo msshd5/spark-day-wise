@@ -494,6 +494,12 @@ export default function Finance() {
             {format(new Date(), 'MMMM yyyy', { locale: ar })}
           </p>
         </div>
+        <ExcelImportExport
+          expenses={expenses}
+          recurringExpenses={recurringExpenses}
+          budget={budget}
+          onDataChanged={fetchData}
+        />
       </header>
 
       {/* Budget Overview Card */}
