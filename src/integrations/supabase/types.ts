@@ -259,6 +259,54 @@ export type Database = {
         }
         Relationships: []
       }
+      courses: {
+        Row: {
+          color: string | null
+          completed_lessons: number | null
+          created_at: string
+          id: string
+          instructor: string | null
+          notes: string | null
+          platform: string | null
+          status: string
+          title: string
+          total_lessons: number | null
+          updated_at: string
+          url: string | null
+          user_id: string
+        }
+        Insert: {
+          color?: string | null
+          completed_lessons?: number | null
+          created_at?: string
+          id?: string
+          instructor?: string | null
+          notes?: string | null
+          platform?: string | null
+          status?: string
+          title: string
+          total_lessons?: number | null
+          updated_at?: string
+          url?: string | null
+          user_id: string
+        }
+        Update: {
+          color?: string | null
+          completed_lessons?: number | null
+          created_at?: string
+          id?: string
+          instructor?: string | null
+          notes?: string | null
+          platform?: string | null
+          status?: string
+          title?: string
+          total_lessons?: number | null
+          updated_at?: string
+          url?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       daily_plans: {
         Row: {
           available_minutes: number | null
@@ -483,6 +531,128 @@ export type Database = {
           id?: string
           is_active?: boolean
           target_count?: number | null
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      journal_entries: {
+        Row: {
+          content: string
+          created_at: string
+          entry_date: string
+          highlights: string[] | null
+          id: string
+          mood: string | null
+          title: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          content?: string
+          created_at?: string
+          entry_date?: string
+          highlights?: string[] | null
+          id?: string
+          mood?: string | null
+          title?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          entry_date?: string
+          highlights?: string[] | null
+          id?: string
+          mood?: string | null
+          title?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      medication_logs: {
+        Row: {
+          created_at: string
+          id: string
+          log_date: string
+          medication_id: string
+          notes: string | null
+          taken_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          log_date?: string
+          medication_id: string
+          notes?: string | null
+          taken_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          log_date?: string
+          medication_id?: string
+          notes?: string | null
+          taken_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "medication_logs_medication_id_fkey"
+            columns: ["medication_id"]
+            isOneToOne: false
+            referencedRelation: "medications"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      medications: {
+        Row: {
+          color: string | null
+          created_at: string
+          dosage: string | null
+          end_date: string | null
+          frequency: string
+          id: string
+          is_active: boolean
+          notes: string | null
+          start_date: string | null
+          times: string[] | null
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          dosage?: string | null
+          end_date?: string | null
+          frequency?: string
+          id?: string
+          is_active?: boolean
+          notes?: string | null
+          start_date?: string | null
+          times?: string[] | null
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          dosage?: string | null
+          end_date?: string | null
+          frequency?: string
+          id?: string
+          is_active?: boolean
+          notes?: string | null
+          start_date?: string | null
+          times?: string[] | null
           title?: string
           updated_at?: string
           user_id?: string

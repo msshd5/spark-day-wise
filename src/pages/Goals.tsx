@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
@@ -12,7 +12,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
 import { 
   Target, Plus, Trash2, CalendarDays, CalendarRange, Calendar,
-  Clock, CheckCircle2, ChevronRight, ChevronLeft, Loader2,
+  Clock, ChevronRight, ChevronLeft, Loader2, ListTodo,
 } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, addMonths, subMonths, addWeeks, subWeeks, addDays, subDays } from 'date-fns';
 import { ar } from 'date-fns/locale';
@@ -138,6 +138,25 @@ export default function Goals() {
     }
     setGoals(prev => prev.filter(g => g.id !== id));
     toast.success('تم حذف الهدف');
+  };
+
+  const convertToTask = async (goal: Goal) => {
+    const { error } = await supabase
+      .from('tasks')
+      .insert({
+        user_id: user!.id,
+        title: goal.title,
+        status: 'pending',
+        priority: 'medium',
+        category: 'work',
+        due_date: goal.type === 'daily' ? goal.period_date : null,
+      });
+
+    if (error) {
+      toast.error('خطأ في إنشاء المهمة');
+      return;
+    }
+    toast.success('تم تحويل الهدف إلى مهمة ✓');
   };
 
   const toggleFitsCommitment = async (goal: Goal) => {
@@ -324,14 +343,25 @@ export default function Goals() {
                         </button>
                       )}
                     </div>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-7 w-7 text-destructive shrink-0"
-                      onClick={() => deleteGoal(goal.id)}
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </Button>
+                    <div className="flex gap-1">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 text-primary shrink-0"
+                        title="حوّل إلى مهمة"
+                        onClick={() => convertToTask(goal)}
+                      >
+                        <ListTodo className="w-3.5 h-3.5" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 text-destructive shrink-0"
+                        onClick={() => deleteGoal(goal.id)}
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </Button>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
