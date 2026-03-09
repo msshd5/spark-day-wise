@@ -347,6 +347,17 @@ export default function Dashboard() {
               </CardContent>
             </Card>
           </Link>
+
+          <Link to="/analytics">
+            <Card className="glass-card hover:border-cyan-500/50 transition-all cursor-pointer">
+              <CardContent className="p-2.5 flex flex-col items-center gap-1.5 text-center">
+                <div className="p-2 rounded-xl bg-cyan-500/20">
+                  <BarChart3 className="w-4 h-4 text-cyan-500" />
+                </div>
+                <p className="text-xs font-medium">التحليلات</p>
+              </CardContent>
+            </Card>
+          </Link>
         </div>
       </section>
 
