@@ -42,6 +42,7 @@ import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { ExpensePieChart } from '@/components/finance/ExpensePieChart';
 import { CategoryBudgetEditDialog } from '@/components/finance/CategoryBudgetEditDialog';
+import { ExcelImportExport } from '@/components/finance/ExcelImportExport';
 
 interface Budget {
   id: string;
@@ -493,6 +494,12 @@ export default function Finance() {
             {format(new Date(), 'MMMM yyyy', { locale: ar })}
           </p>
         </div>
+        <ExcelImportExport
+          expenses={expenses}
+          recurringExpenses={recurringExpenses}
+          budget={budget}
+          onDataChanged={fetchData}
+        />
       </header>
 
       {/* Budget Overview Card */}

@@ -1,32 +1,37 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
 const SYSTEM_PROMPT = `أنت مساعد شخصي ذكي باللغة العربية، متخصص في:
 - تنظيم المهام والأولويات
 - التخطيط اليومي والأسبوعي
 - تقسيم المهام الكبيرة لخطوات صغيرة
-- تقديم نصائح الإنتاجية
-- المساعدة في التركيز وإدارة الوقت
+- متابعة الأهداف الشهرية والأسبوعية واليومية
+- تذكير الأدوية ومتابعة الجرعات
+- متابعة تقدم الكورسات والتعلم
+- تحليل المزاج وتقديم نصائح نفسية بناءً على اليوميات
+- تقديم نصائح مالية وتحليل المصروفات
+- تقديم نصائح الإنتاجية والصحة
 
 قواعد مهمة:
-1. دائماً تحدث بالعربية الفصحى السهلة أو باللهجة الخليجية حسب أسلوب المستخدم
+1. تحدث بالعربية الفصحى السهلة أو اللهجة الخليجية حسب أسلوب المستخدم
 2. كن مختصراً وعملياً
-3. استخدم الإيموجي بشكل معتدل لتوضيح النقاط
+3. استخدم الإيموجي بشكل معتدل
 4. قدم نصائح قابلة للتنفيذ فوراً
 5. شجع المستخدم وحفزه
-6. إذا طلب ترتيب اليوم، اقترح جدول واضح بالأوقات مع مراعاة الالتزامات الثابتة
-7. إذا طلب تقسيم مهمة، قسمها لخطوات صغيرة (15-30 دقيقة لكل خطوة)
+6. إذا طلب ترتيب اليوم، اقترح جدول واضح بالأوقات مع مراعاة الالتزامات
+7. إذا طلب تقسيم مهمة، قسمها لخطوات صغيرة (15-30 دقيقة)
 8. امنع التشتت - إذا أراد إضافة مشروع جديد، اسأله: "وش بنوقف مقابله؟"
-9. عند إنشاء خطة يوم، راعِ أوقات الدوام والالتزامات الثابتة
-10. ضع المهام الصعبة في أوقات الطاقة العالية (عادة الصباح)`;
+9. عند الحديث عن الأدوية، ذكّره بالجرعات المتبقية وأهمية الانتظام
+10. عند الحديث عن الكورسات، شجعه على إكمال الدروس وقدم خطة دراسة
+11. عند الحديث عن المالية، حلل الإنفاق وقدم نصائح توفير
+12. استخدم بيانات اليوميات والمزاج لتقديم نصائح مخصصة
+13. ضع المهام الصعبة في أوقات الطاقة العالية`;
 
 serve(async (req) => {
-  // Handle CORS preflight
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -39,31 +44,24 @@ serve(async (req) => {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
 
-    // إضافة سياق المستخدم للـ System Prompt
     let enhancedSystemPrompt = SYSTEM_PROMPT;
     
     if (userContext) {
       enhancedSystemPrompt += `\n\n--- معلومات المستخدم الحالية ---\n${userContext}`;
     }
 
-    // إذا كان المطلوب إنشاء خطة يوم
     if (generatePlan) {
-      enhancedSystemPrompt += `\n\n🎯 المطلوب الآن: إنشاء خطة يوم هجينة تحترم الالتزامات الثابتة وتوزع المهام المرنة حولها.
-اقترح جدول بالشكل التالي:
+      enhancedSystemPrompt += `\n\n🎯 المطلوب: إنشاء خطة يوم هجينة تحترم الالتزامات الثابتة وتوزع المهام المرنة حولها.
+اقترح جدول:
 ⏰ [الوقت] - [النشاط/المهمة] - [المدة]
-مع مراعاة:
-- فترات الراحة
-- أوقات الطاقة العالية/المنخفضة
-- عدم التعارض مع الالتزامات الثابتة`;
+مع مراعاة فترات الراحة وأوقات الطاقة وأوقات الأدوية إن وجدت.`;
     }
 
-    // بناء رسائل المحادثة
     const chatMessages = [
       { role: "system", content: enhancedSystemPrompt },
       ...messages,
     ];
 
-    // استدعاء AI Gateway
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -79,21 +77,18 @@ serve(async (req) => {
 
     if (!response.ok) {
       const status = response.status;
-      
       if (status === 429) {
         return new Response(
           JSON.stringify({ error: "تجاوزت الحد المسموح من الطلبات، حاول مرة أخرى لاحقاً" }),
           { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
-      
       if (status === 402) {
         return new Response(
           JSON.stringify({ error: "يرجى إضافة رصيد لحساب Lovable AI" }),
           { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
-
       const errorText = await response.text();
       console.error("AI gateway error:", status, errorText);
       return new Response(
@@ -102,7 +97,6 @@ serve(async (req) => {
       );
     }
 
-    // إرجاع Stream مباشرة
     return new Response(response.body, {
       headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
     });
