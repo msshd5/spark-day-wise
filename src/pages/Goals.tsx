@@ -539,6 +539,40 @@ export default function Goals() {
           </div>
         )}
       </Tabs>
+
+      {/* Linked Tasks Dialog */}
+      <Dialog open={!!viewingGoalId} onOpenChange={() => setViewingGoalId(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>المهام المرتبطة</DialogTitle>
+          </DialogHeader>
+          {loadingTasks ? (
+            <div className="flex justify-center py-6">
+              <Loader2 className="w-6 h-6 animate-spin text-primary" />
+            </div>
+          ) : goalTasks.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-4">لا توجد مهام مرتبطة</p>
+          ) : (
+            <div className="space-y-2">
+              {goalTasks.map(task => (
+                <Card key={task.id} className="glass-card">
+                  <CardContent className="p-3 flex items-center justify-between">
+                    <span className="text-sm font-medium">{task.title}</span>
+                    <div className="flex gap-1.5">
+                      <Badge variant="outline" className="text-xs">
+                        {statusLabel[task.status || 'pending'] || task.status}
+                      </Badge>
+                      <Badge variant="secondary" className="text-xs">
+                        {task.priority || 'medium'}
+                      </Badge>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
