@@ -30,6 +30,7 @@ import {
   Pill,
   GraduationCap,
   PenLine,
+  BarChart3,
 } from 'lucide-react';
 import { format, startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from 'date-fns';
 import { ar } from 'date-fns/locale';
