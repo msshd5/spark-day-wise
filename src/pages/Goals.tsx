@@ -12,8 +12,14 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
 import { 
   Target, Plus, Trash2, CalendarDays, CalendarRange, Calendar,
-  Clock, ChevronRight, ChevronLeft, Loader2, ListTodo, Check, RefreshCw
+  Clock, ChevronRight, ChevronLeft, Loader2, ListTodo, Check, RefreshCw, Eye
 } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, addMonths, subMonths, addWeeks, subWeeks, addDays, subDays } from 'date-fns';
 import { ar } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
