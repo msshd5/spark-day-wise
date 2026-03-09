@@ -511,6 +511,17 @@ export default function Goals() {
                             <ListTodo className="w-3.5 h-3.5" />
                           )}
                         </Button>
+                        {isConverted && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 text-muted-foreground shrink-0"
+                            title="عرض المهام"
+                            onClick={() => viewLinkedTasks(goal.id)}
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                          </Button>
+                        )}
                         <Button
                           variant="ghost"
                           size="icon"
