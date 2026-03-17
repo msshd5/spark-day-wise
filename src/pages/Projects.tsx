@@ -297,6 +297,7 @@ function AddProjectForm({ userId, onSuccess }: { userId: string; onSuccess: () =
       user_id: userId,
       name: name.trim(),
       description: description.trim() || null,
+      collaborators: collaborators.trim() || null,
       color,
     });
 
