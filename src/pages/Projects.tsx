@@ -338,6 +338,15 @@ function AddProjectForm({ userId, onSuccess }: { userId: string; onSuccess: () =
       </div>
 
       <div className="space-y-2">
+        <Label htmlFor="collaborators">مع مين؟</Label>
+        <Input
+          id="collaborators"
+          placeholder="مثال: لوحدي، مع فريق العمل، مع أحمد..."
+          value={collaborators}
+          onChange={(e) => setCollaborators(e.target.value)}
+          className="bg-input border-border"
+        />
+      </div>
         <Label>اللون</Label>
         <div className="flex flex-wrap gap-2">
           {projectColors.map((c) => (
