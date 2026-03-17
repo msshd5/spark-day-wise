@@ -20,6 +20,7 @@ import {
   MoreVertical,
   Trash2,
   CheckCircle2,
+  Users,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
