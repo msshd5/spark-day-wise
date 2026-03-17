@@ -31,8 +31,29 @@ export interface Project {
   description: string | null;
   color: string;
   status: ProjectStatus;
+  collaborators: string | null;
   start_date: string | null;
   end_date: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ProjectFile {
+  id: string;
+  project_id: string;
+  user_id: string;
+  file_name: string;
+  file_url: string;
+  file_type: string | null;
+  file_size: number | null;
+  created_at: string;
+}
+
+export interface ProjectNote {
+  id: string;
+  project_id: string;
+  user_id: string;
+  content: string;
   created_at: string;
   updated_at: string;
 }

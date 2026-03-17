@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Project, Task, projectStatusLabels } from '@/types/database';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -19,6 +20,7 @@ import {
   MoreVertical,
   Trash2,
   CheckCircle2,
+  Users,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
@@ -36,6 +38,7 @@ const projectColors = [
 
 export default function Projects() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [projects, setProjects] = useState<(Project & { tasks?: Task[] })[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddDialog, setShowAddDialog] = useState(false);
@@ -140,6 +143,7 @@ export default function Projects() {
                     key={project.id} 
                     project={project} 
                     onDelete={() => deleteProject(project.id)}
+                    onClick={() => navigate(`/projects/${project.id}`)}
                   />
                 ))}
               </div>
@@ -158,6 +162,7 @@ export default function Projects() {
                     key={project.id} 
                     project={project} 
                     onDelete={() => deleteProject(project.id)}
+                    onClick={() => navigate(`/projects/${project.id}`)}
                   />
                 ))}
               </div>
@@ -195,10 +200,12 @@ export default function Projects() {
 
 function ProjectCard({ 
   project, 
-  onDelete 
+  onDelete,
+  onClick,
 }: { 
   project: Project & { tasks?: Task[] }; 
   onDelete: () => void;
+  onClick: () => void;
 }) {
   const tasks = project.tasks || [];
   const completedTasks = tasks.filter(t => t.status === 'completed').length;
@@ -212,7 +219,7 @@ function ProjectCard({
   };
 
   return (
-    <Card className="glass-card overflow-hidden">
+    <Card className="glass-card overflow-hidden cursor-pointer hover:ring-1 hover:ring-primary/30 transition-all" onClick={onClick}>
       <div 
         className="h-1.5" 
         style={{ backgroundColor: project.color }}
@@ -231,16 +238,22 @@ function ProjectCard({
                 {project.description}
               </p>
             )}
+            {project.collaborators && (
+              <div className="flex items-center gap-1 mt-1 text-xs text-muted-foreground">
+                <Users className="w-3 h-3" />
+                {project.collaborators}
+              </div>
+            )}
           </div>
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-8 w-8">
+              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => e.stopPropagation()}>
                 <MoreVertical className="w-4 h-4" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={onDelete} className="text-destructive">
+              <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onDelete(); }} className="text-destructive">
                 <Trash2 className="w-4 h-4 ml-2" />
                 حذف
               </DropdownMenuItem>
@@ -269,6 +282,7 @@ function AddProjectForm({ userId, onSuccess }: { userId: string; onSuccess: () =
   const [loading, setLoading] = useState(false);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
+  const [collaborators, setCollaborators] = useState('');
   const [color, setColor] = useState(projectColors[0]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -283,6 +297,7 @@ function AddProjectForm({ userId, onSuccess }: { userId: string; onSuccess: () =
       user_id: userId,
       name: name.trim(),
       description: description.trim() || null,
+      collaborators: collaborators.trim() || null,
       color,
     });
 
@@ -319,6 +334,17 @@ function AddProjectForm({ userId, onSuccess }: { userId: string; onSuccess: () =
           onChange={(e) => setDescription(e.target.value)}
           className="bg-input border-border resize-none"
           rows={3}
+        />
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="collaborators">مع مين؟</Label>
+        <Input
+          id="collaborators"
+          placeholder="مثال: لوحدي، مع فريق العمل، مع أحمد..."
+          value={collaborators}
+          onChange={(e) => setCollaborators(e.target.value)}
+          className="bg-input border-border"
         />
       </div>
 
