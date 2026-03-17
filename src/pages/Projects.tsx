@@ -38,6 +38,7 @@ const projectColors = [
 
 export default function Projects() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [projects, setProjects] = useState<(Project & { tasks?: Task[] })[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddDialog, setShowAddDialog] = useState(false);
