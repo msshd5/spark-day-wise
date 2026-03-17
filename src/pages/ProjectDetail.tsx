@@ -2,30 +2,27 @@ import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { Project, Task, ProjectFile, ProjectNote, taskStatusLabels, taskPriorityLabels, projectStatusLabels } from '@/types/database';
+import { Project, Task, ProjectFile, ProjectNote, taskStatusLabels, projectStatusLabels, ProjectStatus } from '@/types/database';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Textarea } from '@/components/ui/textarea';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { 
-  ArrowRight, 
-  Loader2, 
-  Upload, 
-  FileText, 
-  Trash2, 
-  CheckCircle2, 
-  Users, 
-  StickyNote,
-  Download,
-  File,
-  Image as ImageIcon,
-  FileArchive,
-  Save,
+  ArrowRight, Loader2, Upload, FileText, Trash2, CheckCircle2, Users, 
+  Download, File, Image as ImageIcon, FileArchive, Save, Pencil, Plus,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+
+const projectColors = [
+  '#8B5CF6', '#06B6D4', '#10B981', '#F59E0B', '#EF4444', '#EC4899', '#6366F1', '#84CC16',
+];
 
 export default function ProjectDetail() {
   const { id } = useParams<{ id: string }>();
@@ -42,10 +39,23 @@ export default function ProjectDetail() {
   const [uploading, setUploading] = useState(false);
   const [savingNote, setSavingNote] = useState(false);
 
+  // Edit project state
+  const [showEditDialog, setShowEditDialog] = useState(false);
+  const [editName, setEditName] = useState('');
+  const [editDescription, setEditDescription] = useState('');
+  const [editCollaborators, setEditCollaborators] = useState('');
+  const [editStatus, setEditStatus] = useState<ProjectStatus>('active');
+  const [editColor, setEditColor] = useState('#8B5CF6');
+  const [saving, setSaving] = useState(false);
+
+  // Add task state
+  const [showAddTask, setShowAddTask] = useState(false);
+  const [newTaskTitle, setNewTaskTitle] = useState('');
+  const [newTaskPriority, setNewTaskPriority] = useState('medium');
+  const [addingTask, setAddingTask] = useState(false);
+
   useEffect(() => {
-    if (user && id) {
-      fetchAll();
-    }
+    if (user && id) fetchAll();
   }, [user, id]);
 
   const fetchAll = async () => {
@@ -63,7 +73,13 @@ export default function ProjectDetail() {
       return;
     }
 
-    setProject(projectRes.data as unknown as Project);
+    const p = projectRes.data as unknown as Project;
+    setProject(p);
+    setEditName(p.name);
+    setEditDescription(p.description || '');
+    setEditCollaborators(p.collaborators || '');
+    setEditStatus(p.status);
+    setEditColor(p.color);
     setTasks((tasksRes.data || []) as unknown as Task[]);
     setFiles((filesRes.data || []) as unknown as ProjectFile[]);
     
@@ -75,49 +91,63 @@ export default function ProjectDetail() {
     setLoading(false);
   };
 
+  const saveProjectEdit = async () => {
+    if (!editName.trim()) { toast.error('اسم المشروع مطلوب'); return; }
+    setSaving(true);
+    const { error } = await supabase.from('projects').update({
+      name: editName.trim(),
+      description: editDescription.trim() || null,
+      collaborators: editCollaborators.trim() || null,
+      status: editStatus,
+      color: editColor,
+    }).eq('id', id!);
+    setSaving(false);
+    if (error) { toast.error('خطأ في حفظ التعديلات'); return; }
+    toast.success('تم تحديث المشروع');
+    setShowEditDialog(false);
+    fetchAll();
+  };
+
+  const addTask = async () => {
+    if (!newTaskTitle.trim()) { toast.error('اكتب عنوان المهمة'); return; }
+    setAddingTask(true);
+    const { error } = await supabase.from('tasks').insert({
+      user_id: user!.id,
+      project_id: id!,
+      title: newTaskTitle.trim(),
+      priority: newTaskPriority,
+    });
+    setAddingTask(false);
+    if (error) { toast.error('خطأ في إضافة المهمة'); return; }
+    toast.success('تمت إضافة المهمة');
+    setNewTaskTitle('');
+    setShowAddTask(false);
+    fetchAll();
+  };
+
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFiles = e.target.files;
     if (!selectedFiles || selectedFiles.length === 0) return;
-
     setUploading(true);
     for (const file of Array.from(selectedFiles)) {
       const filePath = `${user!.id}/${id}/${Date.now()}_${file.name}`;
-      
-      const { error: uploadError } = await supabase.storage
-        .from('project-files')
-        .upload(filePath, file);
-
-      if (uploadError) {
-        toast.error(`خطأ في رفع ${file.name}`);
-        continue;
-      }
-
-      const { data: urlData } = supabase.storage
-        .from('project-files')
-        .getPublicUrl(filePath);
-
+      const { error: uploadError } = await supabase.storage.from('project-files').upload(filePath, file);
+      if (uploadError) { toast.error(`خطأ في رفع ${file.name}`); continue; }
+      const { data: urlData } = supabase.storage.from('project-files').getPublicUrl(filePath);
       await supabase.from('project_files').insert({
-        project_id: id!,
-        user_id: user!.id,
-        file_name: file.name,
-        file_url: urlData.publicUrl,
-        file_type: file.type || null,
-        file_size: file.size,
+        project_id: id!, user_id: user!.id, file_name: file.name,
+        file_url: urlData.publicUrl, file_type: file.type || null, file_size: file.size,
       });
     }
-
-    toast.success('تم رفع الملفات بنجاح');
+    toast.success('تم رفع الملفات');
     setUploading(false);
     fetchAll();
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   const deleteFile = async (fileId: string, fileUrl: string) => {
-    // Extract path from URL
     const urlParts = fileUrl.split('/project-files/');
-    if (urlParts[1]) {
-      await supabase.storage.from('project-files').remove([urlParts[1]]);
-    }
+    if (urlParts[1]) await supabase.storage.from('project-files').remove([urlParts[1]]);
     await supabase.from('project_files').delete().eq('id', fileId);
     setFiles(prev => prev.filter(f => f.id !== fileId));
     toast.success('تم حذف الملف');
@@ -129,9 +159,7 @@ export default function ProjectDetail() {
       await supabase.from('project_notes').update({ content: noteContent }).eq('id', notes.id);
     } else {
       const { data } = await supabase.from('project_notes').insert({
-        project_id: id!,
-        user_id: user!.id,
-        content: noteContent,
+        project_id: id!, user_id: user!.id, content: noteContent,
       }).select().single();
       if (data) setNotes(data as unknown as ProjectNote);
     }
@@ -171,16 +199,22 @@ export default function ProjectDetail() {
     <div className="min-h-screen p-4 pb-24">
       {/* Header */}
       <header className="mb-6 animate-fade-in">
-        <Button variant="ghost" size="sm" onClick={() => navigate('/projects')} className="mb-3 text-muted-foreground">
-          <ArrowRight className="w-4 h-4 ml-1" />
-          العودة للمشاريع
-        </Button>
+        <div className="flex items-center justify-between mb-3">
+          <Button variant="ghost" size="sm" onClick={() => navigate('/projects')} className="text-muted-foreground">
+            <ArrowRight className="w-4 h-4 ml-1" />
+            العودة للمشاريع
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => setShowEditDialog(true)} className="gap-1">
+            <Pencil className="w-3.5 h-3.5" />
+            تعديل
+          </Button>
+        </div>
         
         <div className="flex items-start gap-3">
           <div className="w-3 h-12 rounded-full" style={{ backgroundColor: project.color }} />
           <div className="flex-1">
             <h1 className="text-2xl font-bold text-foreground">{project.name}</h1>
-            <div className="flex items-center gap-2 mt-1">
+            <div className="flex items-center gap-2 mt-1 flex-wrap">
               <Badge className={cn("text-xs", {
                 'bg-success/20 text-success': project.status === 'active',
                 'bg-primary/20 text-primary': project.status === 'completed',
@@ -202,7 +236,6 @@ export default function ProjectDetail() {
           </div>
         </div>
 
-        {/* Progress */}
         <Card className="glass-card mt-4">
           <CardContent className="p-4">
             <div className="flex items-center justify-between text-sm mb-2">
@@ -228,7 +261,46 @@ export default function ProjectDetail() {
 
         {/* Tasks Tab */}
         <TabsContent value="tasks" className="space-y-3">
-          {tasks.length === 0 ? (
+          {/* Add task button */}
+          <Button onClick={() => setShowAddTask(true)} variant="outline" className="w-full border-dashed gap-2">
+            <Plus className="w-4 h-4" />
+            إضافة مهمة
+          </Button>
+
+          {showAddTask && (
+            <Card className="glass-card">
+              <CardContent className="p-4 space-y-3">
+                <Input
+                  placeholder="عنوان المهمة..."
+                  value={newTaskTitle}
+                  onChange={(e) => setNewTaskTitle(e.target.value)}
+                  className="bg-input border-border"
+                  onKeyDown={(e) => e.key === 'Enter' && addTask()}
+                />
+                <div className="flex items-center gap-2">
+                  <Select value={newTaskPriority} onValueChange={setNewTaskPriority}>
+                    <SelectTrigger className="w-32 bg-input border-border">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="low">منخفض</SelectItem>
+                      <SelectItem value="medium">متوسط</SelectItem>
+                      <SelectItem value="high">عالي</SelectItem>
+                      <SelectItem value="urgent">عاجل</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Button onClick={addTask} className="btn-gradient flex-1" disabled={addingTask}>
+                    {addingTask ? <Loader2 className="w-4 h-4 animate-spin" /> : 'إضافة'}
+                  </Button>
+                  <Button variant="ghost" onClick={() => { setShowAddTask(false); setNewTaskTitle(''); }}>
+                    إلغاء
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {tasks.length === 0 && !showAddTask ? (
             <Card className="glass-card">
               <CardContent className="p-6 text-center">
                 <CheckCircle2 className="w-12 h-12 text-muted-foreground mx-auto mb-3 opacity-30" />
@@ -261,22 +333,11 @@ export default function ProjectDetail() {
 
         {/* Files Tab */}
         <TabsContent value="files" className="space-y-3">
-          <input
-            ref={fileInputRef}
-            type="file"
-            multiple
-            className="hidden"
-            onChange={handleFileUpload}
-          />
-          <Button 
-            onClick={() => fileInputRef.current?.click()} 
-            className="w-full btn-gradient"
-            disabled={uploading}
-          >
+          <input ref={fileInputRef} type="file" multiple className="hidden" onChange={handleFileUpload} />
+          <Button onClick={() => fileInputRef.current?.click()} className="w-full btn-gradient" disabled={uploading}>
             {uploading ? <Loader2 className="w-4 h-4 animate-spin ml-2" /> : <Upload className="w-4 h-4 ml-2" />}
             {uploading ? 'جارٍ الرفع...' : 'رفع ملفات'}
           </Button>
-
           {files.length === 0 ? (
             <Card className="glass-card">
               <CardContent className="p-6 text-center">
@@ -295,9 +356,7 @@ export default function ProjectDetail() {
                   </div>
                   <div className="flex items-center gap-1">
                     <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
-                      <a href={file.file_url} target="_blank" rel="noopener noreferrer">
-                        <Download className="w-4 h-4" />
-                      </a>
+                      <a href={file.file_url} target="_blank" rel="noopener noreferrer"><Download className="w-4 h-4" /></a>
                     </Button>
                     <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => deleteFile(file.id, file.file_url)}>
                       <Trash2 className="w-4 h-4" />
@@ -324,6 +383,56 @@ export default function ProjectDetail() {
           </Button>
         </TabsContent>
       </Tabs>
+
+      {/* Edit Project Dialog */}
+      <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
+        <DialogContent className="glass-card border-border max-w-md mx-4">
+          <DialogHeader>
+            <DialogTitle>تعديل المشروع</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>اسم المشروع *</Label>
+              <Input value={editName} onChange={(e) => setEditName(e.target.value)} className="bg-input border-border" />
+            </div>
+            <div className="space-y-2">
+              <Label>الوصف</Label>
+              <Textarea value={editDescription} onChange={(e) => setEditDescription(e.target.value)} className="bg-input border-border resize-none" rows={3} />
+            </div>
+            <div className="space-y-2">
+              <Label>مع مين؟</Label>
+              <Input value={editCollaborators} onChange={(e) => setEditCollaborators(e.target.value)} placeholder="لوحدي، مع فريق العمل..." className="bg-input border-border" />
+            </div>
+            <div className="space-y-2">
+              <Label>الحالة</Label>
+              <Select value={editStatus} onValueChange={(v) => setEditStatus(v as ProjectStatus)}>
+                <SelectTrigger className="bg-input border-border">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.entries(projectStatusLabels).map(([key, label]) => (
+                    <SelectItem key={key} value={key}>{label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>اللون</Label>
+              <div className="flex flex-wrap gap-2">
+                {projectColors.map((c) => (
+                  <button key={c} type="button" onClick={() => setEditColor(c)}
+                    className={cn("w-8 h-8 rounded-full transition-all", editColor === c && "ring-2 ring-offset-2 ring-offset-background ring-primary")}
+                    style={{ backgroundColor: c }}
+                  />
+                ))}
+              </div>
+            </div>
+            <Button onClick={saveProjectEdit} className="w-full btn-gradient" disabled={saving}>
+              {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : 'حفظ التعديلات'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

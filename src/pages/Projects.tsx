@@ -21,6 +21,9 @@ import {
   Trash2,
   CheckCircle2,
   Users,
+  Sparkles,
+  Check,
+  X,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
@@ -42,6 +45,10 @@ export default function Projects() {
   const [projects, setProjects] = useState<(Project & { tasks?: Task[] })[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddDialog, setShowAddDialog] = useState(false);
+  const [showAiDialog, setShowAiDialog] = useState(false);
+  const [aiPrompt, setAiPrompt] = useState('');
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiSuggestions, setAiSuggestions] = useState<{ name: string; description: string; collaborators?: string; color: string; selected: boolean }[]>([]);
 
   useEffect(() => {
     if (user) {
@@ -98,6 +105,46 @@ export default function Projects() {
 
     setProjects(prev => prev.filter(p => p.id !== projectId));
     toast.success('تم حذف المشروع');
+  };
+
+  const generateAiProjects = async () => {
+    if (!aiPrompt.trim()) { toast.error('اكتب وصف لنوع المشاريع اللي تبيها'); return; }
+    setAiLoading(true);
+    setAiSuggestions([]);
+    try {
+      const { data, error } = await supabase.functions.invoke('ai-projects', {
+        body: { prompt: aiPrompt },
+      });
+      if (error) throw error;
+      const projects = (data?.projects || []).map((p: any) => ({ ...p, selected: true }));
+      if (projects.length === 0) { toast.error('ما قدرت أقترح مشاريع، جرب وصف مختلف'); }
+      else { setAiSuggestions(projects); }
+    } catch (e) {
+      console.error(e);
+      toast.error('حدث خطأ في الذكاء الاصطناعي');
+    }
+    setAiLoading(false);
+  };
+
+  const saveAiProjects = async () => {
+    const selected = aiSuggestions.filter(s => s.selected);
+    if (selected.length === 0) { toast.error('اختر مشروع واحد على الأقل'); return; }
+    setAiLoading(true);
+    for (const s of selected) {
+      await supabase.from('projects').insert({
+        user_id: user!.id,
+        name: s.name,
+        description: s.description,
+        collaborators: s.collaborators || null,
+        color: s.color || '#8B5CF6',
+      });
+    }
+    toast.success(`تم إنشاء ${selected.length} مشروع`);
+    setAiLoading(false);
+    setShowAiDialog(false);
+    setAiSuggestions([]);
+    setAiPrompt('');
+    fetchProjects();
   };
 
   const activeProjects = projects.filter(p => p.status === 'active');
@@ -171,27 +218,89 @@ export default function Projects() {
         </div>
       )}
 
-      {/* زر الإضافة العائم */}
-      <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
-        <DialogTrigger asChild>
-          <Button 
-            className="fixed bottom-24 left-4 w-14 h-14 rounded-full shadow-glow btn-gradient"
-            size="icon"
-          >
-            <Plus className="w-6 h-6" />
-          </Button>
-        </DialogTrigger>
-        <DialogContent className="glass-card border-border max-w-md mx-4">
+      {/* Floating buttons */}
+      <div className="fixed bottom-24 left-4 flex flex-col gap-3">
+        <Button 
+          className="w-14 h-14 rounded-full shadow-glow bg-accent hover:bg-accent/90"
+          size="icon"
+          onClick={() => setShowAiDialog(true)}
+        >
+          <Sparkles className="w-6 h-6" />
+        </Button>
+        <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
+          <DialogTrigger asChild>
+            <Button className="w-14 h-14 rounded-full shadow-glow btn-gradient" size="icon">
+              <Plus className="w-6 h-6" />
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="glass-card border-border max-w-md mx-4">
+            <DialogHeader>
+              <DialogTitle>إنشاء مشروع جديد</DialogTitle>
+            </DialogHeader>
+            <AddProjectForm 
+              userId={user!.id} 
+              onSuccess={() => { setShowAddDialog(false); fetchProjects(); }} 
+            />
+          </DialogContent>
+        </Dialog>
+      </div>
+
+      {/* AI Dialog */}
+      <Dialog open={showAiDialog} onOpenChange={setShowAiDialog}>
+        <DialogContent className="glass-card border-border max-w-md mx-4 max-h-[80vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>إنشاء مشروع جديد</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              <Sparkles className="w-5 h-5 text-accent" />
+              إنشاء مشاريع بالذكاء الاصطناعي
+            </DialogTitle>
           </DialogHeader>
-          <AddProjectForm 
-            userId={user!.id} 
-            onSuccess={() => {
-              setShowAddDialog(false);
-              fetchProjects();
-            }} 
-          />
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>وصف المشاريع اللي تبيها</Label>
+              <Textarea
+                placeholder="مثال: أبي مشاريع لتطوير مهاراتي البرمجية... أو مشاريع لبدء عمل تجاري..."
+                value={aiPrompt}
+                onChange={(e) => setAiPrompt(e.target.value)}
+                className="bg-input border-border resize-none"
+                rows={3}
+              />
+            </div>
+            <Button onClick={generateAiProjects} className="w-full btn-gradient" disabled={aiLoading}>
+              {aiLoading ? <Loader2 className="w-4 h-4 animate-spin ml-2" /> : <Sparkles className="w-4 h-4 ml-2" />}
+              {aiLoading ? 'جارٍ التوليد...' : 'اقترح مشاريع'}
+            </Button>
+
+            {aiSuggestions.length > 0 && (
+              <div className="space-y-3">
+                <p className="text-sm text-muted-foreground">اختر المشاريع اللي تبي تضيفها:</p>
+                {aiSuggestions.map((s, i) => (
+                  <Card key={i} className={cn("glass-card cursor-pointer transition-all", s.selected ? "ring-1 ring-primary" : "opacity-60")}
+                    onClick={() => setAiSuggestions(prev => prev.map((p, j) => j === i ? { ...p, selected: !p.selected } : p))}>
+                    <CardContent className="p-3">
+                      <div className="flex items-start gap-2">
+                        <div className="w-3 h-3 rounded-full mt-1.5 shrink-0" style={{ backgroundColor: s.color }} />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <p className="font-medium text-sm">{s.name}</p>
+                            {s.selected && <Check className="w-4 h-4 text-success shrink-0" />}
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-0.5">{s.description}</p>
+                          {s.collaborators && (
+                            <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+                              <Users className="w-3 h-3" /> {s.collaborators}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+                <Button onClick={saveAiProjects} className="w-full btn-gradient" disabled={aiLoading}>
+                  {aiLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : `إضافة ${aiSuggestions.filter(s => s.selected).length} مشروع`}
+                </Button>
+              </div>
+            )}
+          </div>
         </DialogContent>
       </Dialog>
     </div>
