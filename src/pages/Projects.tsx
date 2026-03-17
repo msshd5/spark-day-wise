@@ -200,10 +200,12 @@ export default function Projects() {
 
 function ProjectCard({ 
   project, 
-  onDelete 
+  onDelete,
+  onClick,
 }: { 
   project: Project & { tasks?: Task[] }; 
   onDelete: () => void;
+  onClick: () => void;
 }) {
   const tasks = project.tasks || [];
   const completedTasks = tasks.filter(t => t.status === 'completed').length;
@@ -217,7 +219,7 @@ function ProjectCard({
   };
 
   return (
-    <Card className="glass-card overflow-hidden">
+    <Card className="glass-card overflow-hidden cursor-pointer hover:ring-1 hover:ring-primary/30 transition-all" onClick={onClick}>
       <div 
         className="h-1.5" 
         style={{ backgroundColor: project.color }}
@@ -236,16 +238,22 @@ function ProjectCard({
                 {project.description}
               </p>
             )}
+            {project.collaborators && (
+              <div className="flex items-center gap-1 mt-1 text-xs text-muted-foreground">
+                <Users className="w-3 h-3" />
+                {project.collaborators}
+              </div>
+            )}
           </div>
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-8 w-8">
+              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => e.stopPropagation()}>
                 <MoreVertical className="w-4 h-4" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={onDelete} className="text-destructive">
+              <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onDelete(); }} className="text-destructive">
                 <Trash2 className="w-4 h-4 ml-2" />
                 حذف
               </DropdownMenuItem>
