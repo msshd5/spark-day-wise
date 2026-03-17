@@ -282,6 +282,7 @@ function AddProjectForm({ userId, onSuccess }: { userId: string; onSuccess: () =
   const [loading, setLoading] = useState(false);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
+  const [collaborators, setCollaborators] = useState('');
   const [color, setColor] = useState(projectColors[0]);
 
   const handleSubmit = async (e: React.FormEvent) => {
