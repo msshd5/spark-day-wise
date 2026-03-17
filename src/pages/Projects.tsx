@@ -21,6 +21,9 @@ import {
   Trash2,
   CheckCircle2,
   Users,
+  Sparkles,
+  Check,
+  X,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
