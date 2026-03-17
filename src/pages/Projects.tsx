@@ -162,6 +162,7 @@ export default function Projects() {
                     key={project.id} 
                     project={project} 
                     onDelete={() => deleteProject(project.id)}
+                    onClick={() => navigate(`/projects/${project.id}`)}
                   />
                 ))}
               </div>
