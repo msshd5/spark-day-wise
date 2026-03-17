@@ -347,6 +347,8 @@ function AddProjectForm({ userId, onSuccess }: { userId: string; onSuccess: () =
           className="bg-input border-border"
         />
       </div>
+
+      <div className="space-y-2">
         <Label>اللون</Label>
         <div className="flex flex-wrap gap-2">
           {projectColors.map((c) => (
