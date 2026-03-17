@@ -45,6 +45,10 @@ export default function Projects() {
   const [projects, setProjects] = useState<(Project & { tasks?: Task[] })[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddDialog, setShowAddDialog] = useState(false);
+  const [showAiDialog, setShowAiDialog] = useState(false);
+  const [aiPrompt, setAiPrompt] = useState('');
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiSuggestions, setAiSuggestions] = useState<{ name: string; description: string; collaborators?: string; color: string; selected: boolean }[]>([]);
 
   useEffect(() => {
     if (user) {
