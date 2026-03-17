@@ -107,6 +107,46 @@ export default function Projects() {
     toast.success('تم حذف المشروع');
   };
 
+  const generateAiProjects = async () => {
+    if (!aiPrompt.trim()) { toast.error('اكتب وصف لنوع المشاريع اللي تبيها'); return; }
+    setAiLoading(true);
+    setAiSuggestions([]);
+    try {
+      const { data, error } = await supabase.functions.invoke('ai-projects', {
+        body: { prompt: aiPrompt },
+      });
+      if (error) throw error;
+      const projects = (data?.projects || []).map((p: any) => ({ ...p, selected: true }));
+      if (projects.length === 0) { toast.error('ما قدرت أقترح مشاريع، جرب وصف مختلف'); }
+      else { setAiSuggestions(projects); }
+    } catch (e) {
+      console.error(e);
+      toast.error('حدث خطأ في الذكاء الاصطناعي');
+    }
+    setAiLoading(false);
+  };
+
+  const saveAiProjects = async () => {
+    const selected = aiSuggestions.filter(s => s.selected);
+    if (selected.length === 0) { toast.error('اختر مشروع واحد على الأقل'); return; }
+    setAiLoading(true);
+    for (const s of selected) {
+      await supabase.from('projects').insert({
+        user_id: user!.id,
+        name: s.name,
+        description: s.description,
+        collaborators: s.collaborators || null,
+        color: s.color || '#8B5CF6',
+      });
+    }
+    toast.success(`تم إنشاء ${selected.length} مشروع`);
+    setAiLoading(false);
+    setShowAiDialog(false);
+    setAiSuggestions([]);
+    setAiPrompt('');
+    fetchProjects();
+  };
+
   const activeProjects = projects.filter(p => p.status === 'active');
   const otherProjects = projects.filter(p => p.status !== 'active');
 
